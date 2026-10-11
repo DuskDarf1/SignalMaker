@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="SignalMaker traffic signal editor." />
+  <title>SignalMaker</title>
+  <script src="js/dimensions.js"></script>
+  <script src="js/regulatory-sign-data.js"></script>
+  <script src="js/street-font-data.js"></script>
+  <script src="js/street-signs.js"></script>
+  <script src="js/signal-model.js"></script>
+  <script src="js/signal-renderer.js"></script>
+  <script src="js/head-editor.js"></script>
+  <script src="js/street-sign-editor.js"></script>
+  <script src="js/main.js"></script>
+  <link href="css/page.css" rel="stylesheet" />
+  <link href="css/form.css" rel="stylesheet" />
+  <link href="css/heads.css" rel="stylesheet" />
+  <link href="css/street-signs.css" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet" />
+</head>
+<body>
+  <main id="workspace" aria-label="Signal preview">
+    <div id="previewStage"></div>
+  </main>
+
+  <div class="modals">
+    <section id="supportEditor" class="editor" aria-labelledby="supportTitle">
+      <div class="editorBar">
+        <h2 id="supportTitle" class="editorTitle">
+          <span class="material-symbols-outlined" aria-hidden="true">signpost</span>
+          Support Editor
+        </h2>
+      </div>
+      <div class="editorContent">
+        <div class="fieldRow"><label for="supportKind">Support Kind:</label><select id="supportKind"><option value="none">None</option><option value="mast-arm">Mast arm</option><option value="span-wire">Span wire</option></select></div>
+        <div id="mastArmOptions" hidden>
+          <div class="headActions"><button type="button" data-head-action="add-supplementary" hidden>Add Supplementary Head</button></div>
+          <div class="fieldRow"><label for="armLength">Arm Length (ft):</label><div class="dimensionInputs"><input id="armLength" type="range" min="10" max="78" step="0.5" value="40" /><input id="armLengthValue" type="number" min="10" max="78" step="0.5" value="40" aria-label="Arm length in feet" /></div></div>
+          <div class="fieldRow"><label for="mastArmAngle">Arm Angle (°):</label><div class="dimensionInputs"><input id="mastArmAngle" type="range" min="0" max="15" step="0.2" value="0" /><input id="mastArmAngleValue" type="number" min="0" max="15" step="0.2" value="0" aria-label="Mast arm angle in degrees" /></div></div>
+          <div class="fieldRow"><label for="mastBowAngle">Bow Angle (°):</label><div class="dimensionInputs"><input id="mastBowAngle" type="range" min="0" max="20" step="0.2" value="0" /><input id="mastBowAngleValue" type="number" min="0" max="20" step="0.2" value="0" aria-label="Mast arm bow angle in degrees" /></div></div>
+          <div id="mastBowPositionOptions" class="fieldRow" hidden><label for="mastBowPosition">Bow Point (ft):</label><div class="dimensionInputs"><input id="mastBowPosition" type="range" step="any" value="20" /><input id="mastBowPositionValue" type="number" step="any" value="20" aria-label="Mast arm bow point from the connection in feet" /></div></div>
+          <div id="mastBowWidthOptions" class="fieldRow" hidden><label for="mastBowWidth">Bow Width (ft):</label><div class="dimensionInputs"><input id="mastBowWidth" type="range" min="1" max="40" step="any" value="4" /><input id="mastBowWidthValue" type="number" min="1" max="40" step="any" value="4" aria-label="Mast arm bow width in feet" /></div></div>
+          <div class="fieldRow"><label for="mastArmSide">Arm Side:</label><select id="mastArmSide"><option value="right">Right</option><option value="left">Left</option></select></div>
+          <div class="fieldRow"><label for="mastHeadAlignment">Signal Alignment:</label><select id="mastHeadAlignment"><option value="level">Same height</option><option value="arm-center">Mast arm center</option></select></div>
+        </div>
+        <div id="spanWireOptions" hidden>
+          <div class="fieldRow"><label for="spanPostMaterial">Post Material:</label><select id="spanPostMaterial"><option value="steel">Steel</option><option value="concrete">Concrete</option></select></div>
+          <div class="fieldRow"><label for="spanLength">Span Length (ft):</label><div class="dimensionInputs"><input id="spanLength" type="range" min="10" max="250" step="0.5" value="80" /><input id="spanLengthValue" type="number" min="10" max="250" step="0.5" value="80" aria-label="Span length in feet" /></div></div>
+          <div class="fieldRow"><label for="leftPostHeight">Left Post Height (ft):</label><input id="leftPostHeight" data-support-field="leftPostHeight" type="number" min="15" max="50" step="0.5" value="30" /></div>
+          <div class="fieldRow"><label for="rightPostHeight">Right Post Height (ft):</label><input id="rightPostHeight" data-support-field="rightPostHeight" type="number" min="15" max="50" step="0.5" value="30" /></div>
+          <div class="fieldRow"><label for="leftPostWidth">Left Post Width (in):</label><input id="leftPostWidth" data-support-field="leftPostWidth" type="number" min="12" max="36" step="0.5" value="18" /></div>
+          <div class="fieldRow"><label for="rightPostWidth">Right Post Width (in):</label><input id="rightPostWidth" data-support-field="rightPostWidth" type="number" min="12" max="36" step="0.5" value="18" /></div>
+        </div>
+        <div id="supportColorOptions" hidden>
+          <div class="fieldRow"><label for="supportColor">Support Color:</label><select id="supportColor"><option value="#a9a9a9">Silver</option><option value="#252628">Black</option><option value="#654321">Brown</option><option value="#c62828">Red</option></select></div>
+        </div>
+        <div id="headAlignmentOptions" class="fieldRow"><label for="headAlignment">Head Alignment:</label><select id="headAlignment"><option value="center">Center</option><option value="top">Top</option><option value="bottom">Bottom</option></select></div>
+        <div id="supportHeadSpacingOptions" class="headActions" hidden>
+          <button type="button" id="spaceSupportHeadsEvenly" data-head-action="space-evenly" disabled>Space all heads evenly</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="headEditor" class="editor" aria-labelledby="headTitle" hidden>
+      <div class="editorBar">
+        <h2 id="headTitle" class="editorTitle" tabindex="-1">
+          <span class="material-symbols-outlined" aria-hidden="true">tune</span>
+          Head Editor
+        </h2>
+      </div>
+      <div class="editorContent">
+        <div id="headEditorEmpty">
+          <p>No head selected.</p>
+          <button type="button" data-head-action="add">Add Head</button>
+        </div>
+        <form id="headForm" hidden>
+          <div class="fieldRow"><label for="headName">Name:</label><input id="headName" data-head-field="name" maxlength="80" /></div>
+          <div id="poleMountingOptions" class="fieldRow" hidden><label for="poleMounting">Mounting:</label><select id="poleMounting" data-head-field="poleMounting"><option value="side">Side brackets</option><option value="direct">Directly mounted</option></select></div>
+          <div id="armPositionOptions" class="fieldRow" hidden><label id="armPositionLabel" for="armPosition">Arm Position (ft):</label><div class="dimensionInputs"><input id="armPosition" type="range" step="any" aria-label="Head position along support in feet" /><input id="armPositionValue" type="number" step="any" aria-label="Head position along support in feet" /></div></div>
+          <div class="fieldRow"><label for="headOrientation">Orientation:</label><select id="headOrientation" data-head-field="orientation"><option value="vertical">Vertical</option><option value="horizontal">Horizontal</option></select></div>
+          <div class="fieldRow"><label for="headHousingColor">Housing:</label><select id="headHousingColor" data-head-field="housingColor"><option value="black">Black</option><option value="yellow">Federal yellow</option><option value="green">Dark olive green</option></select></div>
+          <div class="fieldRow"><label for="headLayout">Layout:</label><select id="headLayout" data-head-field="layout"><option value="linear">Linear</option><option value="cluster">5-section cluster</option><option value="hawk">HAWK beacon</option></select></div>
+          <div class="fieldRow"><label for="headBackplate">Backplate:</label><select id="headBackplate" data-head-field="backplate"><option value="none">None</option><option value="plain">Non-retroreflective</option><option value="reflective">Retroreflective</option></select></div>
+          <div id="backplateOptions" hidden>
+            <div class="fieldRow"><label for="headBackplateMargin">Plate margin (in):</label><select id="headBackplateMargin" data-head-field="backplateMargin"><option value="5">5</option><option value="8">8</option></select></div>
+            <div class="fieldRow"><label for="headBackplateCorners">Plate corners:</label><select id="headBackplateCorners" data-head-field="backplateCorners"><option value="sharp">Sharp</option><option value="round">Round</option></select></div>
+            <div id="fullBackplateOptions" class="fieldRow" hidden><label for="headFullBackplate">Full rectangle:</label><input id="headFullBackplate" type="checkbox" data-head-field="backplateFullRectangle" /></div>
+            <div id="reflectiveOptions" class="fieldRow" hidden><label for="headReflectiveWidth">Reflective border (in):</label><select id="headReflectiveWidth" data-head-field="reflectiveWidth"><option value="1">1</option><option value="2">2</option><option value="3">3</option></select></div>
+          </div>
+          <hr />
+          <div class="indicationHeading"><h3>Indications</h3><button id="addIndication" type="button">Add Indication</button></div>
+          <div id="indicationList"></div>
+        </form>
+      </div>
+    </section>
+
+    <section id="streetSignsEditor" class="editor" aria-labelledby="streetSignsTitle" hidden>
+      <div class="editorBar"><h2 id="streetSignsTitle" class="editorTitle" tabindex="-1"><span class="material-symbols-outlined" aria-hidden="true">signpost</span>Street Signs</h2></div>
+      <div class="editorContent" id="signEditorContent">
+        <div class="headActions"><button id="addStreetSign" type="button" data-street-action="add">Add Sign</button><button id="duplicateStreetSign" type="button" data-street-action="duplicate">Duplicate</button><button id="removeStreetSign" type="button" data-street-action="remove">Remove</button></div>
+        <div class="headActions" id="blankoutSignActions" hidden><button type="button" data-street-action="add-blankout">Add Blank-out Sign</button></div>
+        <div class="fieldRow"><label for="streetSignSelection">Sign:</label><select id="streetSignSelection"></select></div>
+        <p id="streetSignsEmpty">No signs yet. Add a street sign or a regulatory sign.</p>
+        <form id="streetSignForm" hidden></form>
+      </div>
+    </section>
+
+    <section id="regulatorySignsEditor" class="editor" aria-labelledby="regulatorySignsTitle" hidden>
+      <div class="editorBar"><h2 id="regulatorySignsTitle" class="editorTitle" tabindex="-1"><span class="material-symbols-outlined" aria-hidden="true">block</span>Regulatory Signs</h2></div>
+    </section>
+
+    <section id="phasesEditor" class="editor" aria-labelledby="phasesTitle" hidden>
+      <div class="editorBar">
+        <h2 id="phasesTitle" class="editorTitle">
+          <span class="material-symbols-outlined" aria-hidden="true">traffic</span>
+          Phases
+        </h2>
+      </div>
+      <div class="editorContent"><p>No phases configured.</p></div>
+    </section>
+
+    <section id="approachesEditor" class="editor" aria-labelledby="approachesTitle" hidden>
+      <div class="editorBar">
+        <h2 id="approachesTitle" class="editorTitle">
+          <span class="material-symbols-outlined" aria-hidden="true">explore</span>
+          Approaches
+        </h2>
+      </div>
+      <div class="editorContent"><p>No approaches configured.</p></div>
+    </section>
+  </div>
+
+  <section id="headsMenu" class="headsMenu" aria-labelledby="headsTitle" hidden>
+    <div class="headPopoverHeader">
+      <h2 id="headsTitle">Heads</h2>
+      <span class="headPopoverHint">Drag to reorder</span>
+    </div>
+    <div class="headActions">
+      <button type="button" data-head-action="add">Add Head</button>
+      <button type="button" id="duplicateHead" data-head-action="duplicate" disabled>Duplicate</button>
+      <button type="button" id="removeHead" data-head-action="remove" disabled>Remove</button>
+    </div>
+    <div class="headActions"><button type="button" data-head-action="add-supplementary" hidden>Add Supplementary Head</button></div>
+    <ul id="headList" aria-label="Signal heads"></ul>
+    <div class="headActions">
+      <button type="button" id="spaceHeadsEvenly" data-head-action="space-evenly" disabled>Space all heads evenly</button>
+    </div>
+    <div id="headGapOptions">
+    <label for="headSpacing">Head gap (in):</label>
+    <div class="spacingInputs">
+      <input id="headSpacing" type="range" min="0" max="240" step="0.5" value="12" />
+      <input id="headSpacingValue" type="number" min="0" max="240" step="0.5" value="12" aria-label="Head gap in inches" />
+    </div>
+    </div>
+  </section>
+
+  <nav id="configBar" aria-label="SignalMaker tools">
+    <button type="button" class="configOption selected" data-editor="supportEditor"
+      aria-label="Support Editor" aria-controls="supportEditor" aria-expanded="true" title="Support Editor">
+      <span class="material-symbols-outlined" aria-hidden="true">signpost</span>
+      <span class="configLabel">Support Editor</span>
+    </button>
+    <button type="button" class="configOption" data-editor="headsMenu"
+      aria-label="Heads" aria-controls="headsMenu" aria-expanded="false" title="Heads">
+      <span class="material-symbols-outlined" aria-hidden="true">layers</span>
+      <span class="configLabel">Heads</span>
+      <span class="material-symbols-outlined dropdownIcon" aria-hidden="true">expand_more</span>
+    </button>
+    <button type="button" class="configOption" data-editor="headEditor"
+      aria-label="Head Editor" aria-controls="headEditor" aria-expanded="false" title="Head Editor">
+      <span class="material-symbols-outlined" aria-hidden="true">tune</span>
+      <span class="configLabel">Head Editor</span>
+    </button>
+    <button type="button" class="configOption" data-editor="streetSignsEditor"
+      aria-label="Street Signs" aria-controls="streetSignsEditor" aria-expanded="false" title="Street Signs">
+      <span class="material-symbols-outlined" aria-hidden="true">signpost</span>
+      <span class="configLabel">Street Signs</span>
+    </button>
+    <button type="button" class="configOption" data-editor="regulatorySignsEditor"
+      aria-label="Regulatory Signs" aria-controls="regulatorySignsEditor" aria-expanded="false" title="Regulatory Signs">
+      <span class="material-symbols-outlined" aria-hidden="true">block</span>
+      <span class="configLabel">Regulatory Signs</span>
+    </button>
+    <button type="button" class="configOption" data-editor="phasesEditor"
+      aria-label="Phases" aria-controls="phasesEditor" aria-expanded="false" title="Phases">
+      <span class="material-symbols-outlined" aria-hidden="true">traffic</span>
+      <span class="configLabel">Phases</span>
+    </button>
+    <button type="button" class="configOption" data-editor="approachesEditor"
+      aria-label="Approaches" aria-controls="approachesEditor" aria-expanded="false" title="Approaches">
+      <span class="material-symbols-outlined" aria-hidden="true">explore</span>
+      <span class="configLabel">Approaches</span>
+    </button>
+    <a class="configOption mutcd-link"
+      href="https://mutcd.fhwa.dot.gov/pdfs/11th_Edition/mutcd11thedition.pdf"
+      target="_blank" rel="noopener noreferrer" aria-label="MUTCD" title="MUTCD">
+      <span class="material-symbols-outlined" aria-hidden="true">menu_book</span>
+      <span class="configLabel">MUTCD</span>
+    </a>
+    <button type="button" id="copy" class="configOption" aria-label="Copy signal"
+      title="Copy signal as PNG" disabled>
+      <span class="material-symbols-outlined" aria-hidden="true">content_copy</span>
+    </button>
+    <button type="button" id="download" class="configOption" aria-label="Download signal"
+      title="Download signal as PNG" disabled>
+      <span class="material-symbols-outlined" aria-hidden="true">download</span>
+    </button>
+    <button type="button" id="darkMode" class="configOption" aria-label="Dark mode"
+      aria-pressed="false" title="Dark mode">
+      <span class="material-symbols-outlined" aria-hidden="true">dark_mode</span>
+    </button>
+    <button type="button" id="clearAll" class="configOption" aria-label="Clear all" title="Clear all">
+      <span class="material-symbols-outlined" aria-hidden="true">delete</span>
+    </button>
+  </nav>
+  <!-- SignMaker v2.2's icon selector dialog pattern (GPL-3.0). -->
+  <dialog id="regulatorySignPicker" aria-labelledby="regulatorySignPickerTitle">
+    <h3 id="regulatorySignPickerTitle">Select a Regulatory Sign</h3>
+    <input type="text" id="regulatorySignSearch" placeholder="Search signs..." aria-label="Search regulatory signs by code or name" />
+    <div id="regulatorySignGrid" class="iconGrid" role="group" aria-label="Regulatory signs"></div>
+    <p id="regulatorySearchStatus" role="status"></p>
+    <div class="options"><button type="button" id="closeRegulatorySignPicker">OK</button></div>
+  </dialog>
+  <menu id="copyHeadContextMenu" class="copyPanelContextMenu" aria-label="Copy one signal head" role="menu" hidden></menu>
+  <p id="actionStatus" role="status" aria-live="polite"></p>
+</body>
+</html>

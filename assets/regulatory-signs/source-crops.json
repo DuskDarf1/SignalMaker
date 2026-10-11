@@ -1,0 +1,1218 @@
+[
+  {
+    "id": "R3-1",
+    "code": "R3-1",
+    "name": "No right turn",
+    "width": 24,
+    "height": 24,
+    "group": "Turn restrictions",
+    "section": "2B.26",
+    "page": 131,
+    "crop": [
+      30.520100402832032,
+      137.01849060058595,
+      91.16810150146485,
+      197.66649169921874
+    ]
+  },
+  {
+    "id": "R3-1b",
+    "code": "R3-1b",
+    "name": "No right turn \u2014 trucks",
+    "width": 24,
+    "height": 36,
+    "group": "Turn restrictions",
+    "section": "2B.26",
+    "page": 131,
+    "crop": [
+      104.55630187988281,
+      107.01931457519531,
+      165.16830749511718,
+      197.61131591796874
+    ]
+  },
+  {
+    "id": "R3-1c",
+    "code": "R3-1c",
+    "name": "No right turn \u2014 trucks and buses",
+    "width": 24,
+    "height": 42,
+    "group": "Turn restrictions",
+    "section": "2B.26",
+    "page": 131,
+    "crop": [
+      178.5568054199219,
+      92.02831726074218,
+      239.16881103515624,
+      197.61131591796874
+    ]
+  },
+  {
+    "id": "R3-1d",
+    "code": "R3-1d",
+    "name": "No right turn \u2014 trucks over 4 tons",
+    "width": 24,
+    "height": 48,
+    "group": "Turn restrictions",
+    "section": "2B.26",
+    "page": 131,
+    "crop": [
+      252.55730895996095,
+      77.0574234008789,
+      313.16929931640624,
+      197.630419921875
+    ]
+  },
+  {
+    "id": "R3-1e",
+    "code": "R3-1e",
+    "name": "No right turn \u2014 except buses",
+    "width": 24,
+    "height": 36,
+    "group": "Turn restrictions",
+    "section": "2B.26",
+    "page": 131,
+    "crop": [
+      326.55830078125,
+      107.04812316894531,
+      387.16929931640624,
+      197.64012451171874
+    ]
+  },
+  {
+    "id": "R3-1f",
+    "code": "R3-1f",
+    "name": "No right turn \u2014 except buses and taxis",
+    "width": 24,
+    "height": 42,
+    "group": "Turn restrictions",
+    "section": "2B.26",
+    "page": 131,
+    "crop": [
+      400.55830078125,
+      92.05230407714843,
+      461.17027587890624,
+      197.635302734375
+    ]
+  },
+  {
+    "id": "R3-2",
+    "code": "R3-2",
+    "name": "No left turn",
+    "width": 24,
+    "height": 24,
+    "group": "Turn restrictions",
+    "section": "2B.26",
+    "page": 131,
+    "crop": [
+      176.1050994873047,
+      266.6424987792969,
+      236.75209350585936,
+      327.29249877929686
+    ]
+  },
+  {
+    "id": "R3-3",
+    "code": "R3-3",
+    "name": "No turns",
+    "width": 24,
+    "height": 24,
+    "group": "Turn restrictions",
+    "section": "2B.26",
+    "page": 131,
+    "crop": [
+      243.24090270996095,
+      266.6713073730469,
+      303.85289306640624,
+      327.2823059082031
+    ]
+  },
+  {
+    "id": "R3-4",
+    "code": "R3-4",
+    "name": "No U-turn",
+    "width": 24,
+    "height": 24,
+    "group": "Turn restrictions",
+    "section": "2B.26",
+    "page": 131,
+    "crop": [
+      310.34141235351564,
+      266.6512878417969,
+      370.9894287109375,
+      327.30128784179686
+    ]
+  },
+  {
+    "id": "R3-18",
+    "code": "R3-18",
+    "name": "No U-turn or left turn",
+    "width": 24,
+    "height": 24,
+    "group": "Turn restrictions",
+    "section": "2B.26",
+    "page": 132,
+    "crop": [
+      127.71609954833984,
+      202.4501159667969,
+      180.2771026611328,
+      255.01011962890624
+    ]
+  },
+  {
+    "id": "R3-27",
+    "code": "R3-27",
+    "name": "No straight through",
+    "width": 24,
+    "height": 24,
+    "group": "Turn restrictions",
+    "section": "2B.26",
+    "page": 132,
+    "crop": [
+      215.6105926513672,
+      302.37098388671876,
+      268.1705810546875,
+      354.9309875488281
+    ]
+  },
+  {
+    "id": "R3-5",
+    "code": "R3-5",
+    "name": "Left turn only",
+    "width": 30,
+    "height": 36,
+    "group": "Lane control",
+    "section": "2B.27\u20132B.30",
+    "page": 131,
+    "crop": [
+      377.4777038574219,
+      236.67950134277345,
+      453.07969970703124,
+      327.27150268554686
+    ]
+  },
+  {
+    "id": "R3-5a",
+    "code": "R3-5a",
+    "name": "Straight through only",
+    "width": 30,
+    "height": 36,
+    "group": "Lane control",
+    "section": "2B.27\u20132B.30",
+    "page": 131,
+    "crop": [
+      459.56751708984376,
+      236.67950134277345,
+      535.1705200195313,
+      327.27150268554686
+    ]
+  },
+  {
+    "id": "R3-5bP",
+    "code": "R3-5bP",
+    "name": "Left lane plaque",
+    "width": 30,
+    "height": 12,
+    "group": "Lane control",
+    "section": "2B.27\u20132B.30",
+    "page": 131,
+    "crop": [
+      30.52060012817383,
+      351.3343933105469,
+      106.1655990600586,
+      381.98338623046874
+    ]
+  },
+  {
+    "id": "R3-5fP",
+    "code": "R3-5fP",
+    "name": "Right lane plaque",
+    "width": 30,
+    "height": 12,
+    "group": "Lane control",
+    "section": "2B.27\u20132B.30",
+    "page": 131,
+    "crop": [
+      202.13790588378907,
+      351.34360961914064,
+      277.7408935546875,
+      381.97459716796874
+    ]
+  },
+  {
+    "id": "R3-5cP",
+    "code": "R3-5cP",
+    "name": "HOV 2+ plaque",
+    "width": 24,
+    "height": 12,
+    "group": "Lane control",
+    "section": "2B.27\u20132B.30",
+    "page": 131,
+    "crop": [
+      38.03679733276367,
+      411.3417175292969,
+      98.64879913330078,
+      441.972705078125
+    ]
+  },
+  {
+    "id": "R3-5dP",
+    "code": "R3-5dP",
+    "name": "Taxi lane plaque",
+    "width": 30,
+    "height": 12,
+    "group": "Lane control",
+    "section": "2B.27\u20132B.30",
+    "page": 131,
+    "crop": [
+      116.32970123291015,
+      411.3343933105469,
+      191.9746887207031,
+      441.98338623046874
+    ]
+  },
+  {
+    "id": "R3-5gP",
+    "code": "R3-5gP",
+    "name": "Bus lane plaque",
+    "width": 30,
+    "height": 12,
+    "group": "Lane control",
+    "section": "2B.27\u20132B.30",
+    "page": 131,
+    "crop": [
+      202.13790588378907,
+      411.3426940917969,
+      277.7408935546875,
+      441.972705078125
+    ]
+  },
+  {
+    "id": "R3-6",
+    "code": "R3-6",
+    "name": "Straight or left turn",
+    "width": 30,
+    "height": 36,
+    "group": "Lane control",
+    "section": "2B.27\u20132B.30",
+    "page": 131,
+    "crop": [
+      287.90440063476564,
+      351.33448486328126,
+      363.54942626953124,
+      441.981494140625
+    ]
+  },
+  {
+    "id": "R3-6a",
+    "code": "R3-6a",
+    "name": "U-turn or left turn",
+    "width": 30,
+    "height": 36,
+    "group": "Lane control",
+    "section": "2B.27\u20132B.30",
+    "page": 131,
+    "crop": [
+      373.71299438476564,
+      351.3343933105469,
+      449.36000366210936,
+      441.98439331054686
+    ]
+  },
+  {
+    "id": "R3-6b",
+    "code": "R3-6b",
+    "name": "Two left-turn directions",
+    "width": 30,
+    "height": 36,
+    "group": "Lane control",
+    "section": "2B.27\u20132B.30",
+    "page": 131,
+    "crop": [
+      459.5236022949219,
+      351.3343933105469,
+      535.1705810546875,
+      441.98439331054686
+    ]
+  },
+  {
+    "id": "R3-7aP",
+    "code": "R3-7aP",
+    "name": "Except buses plaque",
+    "width": 24,
+    "height": 12,
+    "group": "Lane control",
+    "section": "2B.27\u20132B.30",
+    "page": 131,
+    "crop": [
+      213.9322937011719,
+      487.0419128417969,
+      274.54429931640624,
+      517.671923828125
+    ]
+  },
+  {
+    "id": "R3-7bP",
+    "code": "R3-7bP",
+    "name": "Except bicycles plaque",
+    "width": 24,
+    "height": 12,
+    "group": "Lane control",
+    "section": "2B.27\u20132B.30",
+    "page": 131,
+    "crop": [
+      213.9322937011719,
+      541.0418823242187,
+      274.54429931640624,
+      571.672900390625
+    ]
+  },
+  {
+    "id": "R3-8",
+    "code": "R3-8",
+    "name": "Two lanes \u2014 left only, through or left",
+    "width": 30,
+    "height": 30,
+    "group": "Lane control",
+    "section": "2B.27\u20132B.30",
+    "page": 131,
+    "crop": [
+      290.64759521484376,
+      496.0229919433594,
+      366.25059814453124,
+      571.6249877929688
+    ]
+  },
+  {
+    "id": "R3-8a",
+    "code": "R3-8a",
+    "name": "Three lanes \u2014 left, shared through/left, right",
+    "width": 48,
+    "height": 30,
+    "group": "Lane control",
+    "section": "2B.27\u20132B.30",
+    "page": 131,
+    "crop": [
+      382.3537109375,
+      496.02402954101564,
+      502.92772216796874,
+      571.626025390625
+    ]
+  },
+  {
+    "id": "R3-8b",
+    "code": "R3-8b",
+    "name": "Three lanes \u2014 left, through, right",
+    "width": 48,
+    "height": 30,
+    "group": "Lane control",
+    "section": "2B.27\u20132B.30",
+    "page": 131,
+    "crop": [
+      30.520701217651368,
+      597.9360473632812,
+      151.0937072753906,
+      673.5380737304688
+    ]
+  },
+  {
+    "id": "R3-8xa",
+    "code": "R3-8xa",
+    "name": "Left and right lanes with through bike lane",
+    "width": 42,
+    "height": 30,
+    "group": "Lane control",
+    "section": "2B.27\u20132B.30",
+    "page": 131,
+    "crop": [
+      163.54220275878907,
+      596.0064208984375,
+      269.1252014160156,
+      671.6074096679688
+    ]
+  },
+  {
+    "id": "R3-8xb",
+    "code": "R3-8xb",
+    "name": "Left, shared through/left bike lane, right",
+    "width": 42,
+    "height": 30,
+    "group": "Lane control",
+    "section": "2B.27\u20132B.30",
+    "page": 131,
+    "crop": [
+      281.5744140625,
+      595.9868896484375,
+      387.1573974609375,
+      671.5878784179688
+    ]
+  },
+  {
+    "id": "R3-8xc",
+    "code": "R3-8xc",
+    "name": "Four lanes including through bike lane",
+    "width": 54,
+    "height": 30,
+    "group": "Lane control",
+    "section": "2B.27\u20132B.30",
+    "page": 131,
+    "crop": [
+      399.6066101074219,
+      596.0064208984375,
+      535.1705810546875,
+      671.6074096679688
+    ]
+  },
+  {
+    "id": "R3-8zd",
+    "code": "R3-8zd",
+    "name": "Roundabout \u2014 left only, all movements",
+    "width": 36,
+    "height": 36,
+    "group": "Lane control",
+    "section": "2B.27",
+    "page": 132,
+    "crop": [
+      127.71619873046875,
+      89.26917724609375,
+      206.1822082519531,
+      167.7341796875
+    ]
+  },
+  {
+    "id": "R3-8ze",
+    "code": "R3-8ze",
+    "name": "Roundabout \u2014 left/through, through only",
+    "width": 36,
+    "height": 36,
+    "group": "Lane control",
+    "section": "2B.27",
+    "page": 132,
+    "crop": [
+      229.53269653320314,
+      89.26917724609375,
+      307.99769897460936,
+      167.7341796875
+    ]
+  },
+  {
+    "id": "R3-8zf",
+    "code": "R3-8zf",
+    "name": "Roundabout \u2014 left/through, through/right",
+    "width": 36,
+    "height": 36,
+    "group": "Lane control",
+    "section": "2B.27",
+    "page": 132,
+    "crop": [
+      331.348095703125,
+      89.26917724609375,
+      409.81309814453124,
+      167.7341796875
+    ]
+  },
+  {
+    "id": "R3-8zg",
+    "code": "R3-8zg",
+    "name": "Roundabout \u2014 left/through, right only",
+    "width": 36,
+    "height": 36,
+    "group": "Lane control",
+    "section": "2B.27",
+    "page": 132,
+    "crop": [
+      433.1634948730469,
+      89.26917724609375,
+      511.6284973144531,
+      167.7341796875
+    ]
+  },
+  {
+    "id": "R3-9a",
+    "code": "R3-9a",
+    "name": "Two-way left turn only \u2014 overhead",
+    "width": 30,
+    "height": 36,
+    "group": "Lane control",
+    "section": "2B.32\u20132B.34",
+    "page": 136,
+    "crop": [
+      66.40769653320312,
+      91.842724609375,
+      112.05870361328125,
+      146.492724609375
+    ]
+  },
+  {
+    "id": "R3-9g--street",
+    "code": "R3-9g",
+    "name": "End reverse lane at Colorado Blvd",
+    "width": 108,
+    "height": 36,
+    "group": "Lane control",
+    "section": "2B.32\u20132B.34",
+    "page": 136,
+    "crop": [
+      67.16309814453125,
+      173.77451782226564,
+      229.78810424804686,
+      228.41551513671874
+    ]
+  },
+  {
+    "id": "R3-9h--street",
+    "code": "R3-9h",
+    "name": "Begin reverse lane at Colorado Blvd",
+    "width": 108,
+    "height": 36,
+    "group": "Lane control",
+    "section": "2B.32\u20132B.34",
+    "page": 136,
+    "crop": [
+      237.79830627441407,
+      173.77451782226564,
+      400.4222900390625,
+      228.41551513671874
+    ]
+  },
+  {
+    "id": "R3-9g--distance",
+    "code": "R3-9g",
+    "name": "End reverse lane \u2014 400 feet",
+    "width": 108,
+    "height": 36,
+    "group": "Lane control",
+    "section": "2B.32\u20132B.34",
+    "page": 136,
+    "crop": [
+      66.40769653320312,
+      248.9160888671875,
+      229.03270263671874,
+      303.5570861816406
+    ]
+  },
+  {
+    "id": "R3-9h--distance",
+    "code": "R3-9h",
+    "name": "Begin reverse lane \u2014 400 feet",
+    "width": 108,
+    "height": 36,
+    "group": "Lane control",
+    "section": "2B.32\u20132B.34",
+    "page": 136,
+    "crop": [
+      237.79830627441407,
+      248.9160888671875,
+      400.4222900390625,
+      303.5570861816406
+    ]
+  },
+  {
+    "id": "R3-9i",
+    "code": "R3-9i",
+    "name": "End reverse lane \u2014 left only",
+    "width": 108,
+    "height": 48,
+    "group": "Lane control",
+    "section": "2B.32\u20132B.34",
+    "page": 136,
+    "crop": [
+      408.40931396484376,
+      230.91199951171876,
+      571.0572998046875,
+      303.5609924316406
+    ]
+  },
+  {
+    "id": "R5-1",
+    "code": "R5-1",
+    "name": "Do not enter",
+    "width": 30,
+    "height": 30,
+    "group": "One way and entry",
+    "section": "2B.46\u20132B.49",
+    "page": 150,
+    "crop": [
+      90.8719985961914,
+      527.3625,
+      181.52899475097655,
+      618.0195190429688
+    ]
+  },
+  {
+    "id": "R5-1a",
+    "code": "R5-1a",
+    "name": "Wrong way",
+    "width": 36,
+    "height": 24,
+    "group": "One way and entry",
+    "section": "2B.46\u20132B.49",
+    "page": 150,
+    "crop": [
+      207.87099914550782,
+      545.3645141601562,
+      316.53001708984374,
+      618.0204956054688
+    ]
+  },
+  {
+    "id": "R6-1",
+    "code": "R6-1",
+    "name": "One way \u2014 left, horizontal",
+    "width": 36,
+    "height": 12,
+    "group": "One way and entry",
+    "section": "2B.46\u20132B.49",
+    "page": 150,
+    "crop": [
+      342.8719909667969,
+      581.3690307617187,
+      451.5299865722656,
+      618.022021484375
+    ]
+  },
+  {
+    "id": "R6-2",
+    "code": "R6-2",
+    "name": "One way \u2014 left, vertical",
+    "width": 24,
+    "height": 30,
+    "group": "One way and entry",
+    "section": "2B.46\u20132B.49",
+    "page": 150,
+    "crop": [
+      477.872998046875,
+      527.3625,
+      550.5289794921875,
+      618.0195190429688
+    ]
+  },
+  {
+    "id": "R10-5",
+    "code": "R10-5",
+    "name": "Left on green arrow only",
+    "width": 30,
+    "height": 36,
+    "group": "Traffic signals",
+    "section": "2B.59\u20132B.60",
+    "page": 173,
+    "crop": [
+      30.61290054321289,
+      75.019482421875,
+      121.26289672851563,
+      183.669482421875
+    ]
+  },
+  {
+    "id": "R10-7",
+    "code": "R10-7",
+    "name": "Do not block intersection",
+    "width": 24,
+    "height": 30,
+    "group": "Traffic signals",
+    "section": "2B.59\u20132B.60",
+    "page": 173,
+    "crop": [
+      346.45069580078126,
+      93.01638488769531,
+      419.10667724609374,
+      183.673388671875
+    ]
+  },
+  {
+    "id": "R10-8",
+    "code": "R10-8",
+    "name": "Use lane with green arrow",
+    "width": 30,
+    "height": 36,
+    "group": "Traffic signals",
+    "section": "2B.59\u20132B.60",
+    "page": 173,
+    "crop": [
+      445.72999267578126,
+      75.01587371826172,
+      536.38798828125,
+      183.673876953125
+    ]
+  },
+  {
+    "id": "R10-10",
+    "code": "R10-10",
+    "name": "Left turn signal",
+    "width": 24,
+    "height": 30,
+    "group": "Traffic signals",
+    "section": "2B.59\u20132B.60",
+    "page": 173,
+    "crop": [
+      30.613301086425782,
+      207.79330139160157,
+      103.26829833984375,
+      298.45030517578124
+    ]
+  },
+  {
+    "id": "R10-10a",
+    "code": "R10-10a",
+    "name": "U-turn signal",
+    "width": 24,
+    "height": 30,
+    "group": "Traffic signals",
+    "section": "2B.59\u20132B.60",
+    "page": 173,
+    "crop": [
+      138.89309387207032,
+      207.7913024902344,
+      211.55009765625,
+      298.45030517578124
+    ]
+  },
+  {
+    "id": "R10-11",
+    "code": "R10-11",
+    "name": "No turn on red \u2014 vertical",
+    "width": 24,
+    "height": 30,
+    "group": "Traffic signals",
+    "section": "2B.59\u20132B.60",
+    "page": 173,
+    "crop": [
+      247.1728942871094,
+      207.79290466308595,
+      319.82789916992186,
+      298.4499084472656
+    ]
+  },
+  {
+    "id": "R10-11a",
+    "code": "R10-11a",
+    "name": "No turn on circular red",
+    "width": 24,
+    "height": 30,
+    "group": "Traffic signals",
+    "section": "2B.59\u20132B.60",
+    "page": 173,
+    "crop": [
+      355.4517028808594,
+      207.79290466308595,
+      428.10771484375,
+      298.4499084472656
+    ]
+  },
+  {
+    "id": "R10-11b",
+    "code": "R10-11b",
+    "name": "No turn on red \u2014 square",
+    "width": 24,
+    "height": 24,
+    "group": "Traffic signals",
+    "section": "2B.59\u20132B.60",
+    "page": 173,
+    "crop": [
+      463.7320068359375,
+      225.794384765625,
+      536.38798828125,
+      298.4493896484375
+    ]
+  },
+  {
+    "id": "R10-11d",
+    "code": "R10-11d",
+    "name": "No turn on red from this lane",
+    "width": 30,
+    "height": 42,
+    "group": "Traffic signals",
+    "section": "2B.59\u20132B.60",
+    "page": 173,
+    "crop": [
+      294.9145935058594,
+      322.43580322265626,
+      385.57158203125,
+      449.09581298828124
+    ]
+  },
+  {
+    "id": "R10-12",
+    "code": "R10-12",
+    "name": "Left turn yield on green",
+    "width": 30,
+    "height": 36,
+    "group": "Traffic signals",
+    "section": "2B.59\u20132B.60",
+    "page": 173,
+    "crop": [
+      57.9072998046875,
+      474.0881774902344,
+      148.56430358886718,
+      582.7471801757813
+    ]
+  },
+  {
+    "id": "R10-12a",
+    "code": "R10-12a",
+    "name": "Left turn yield on flashing yellow arrow",
+    "width": 30,
+    "height": 36,
+    "group": "Traffic signals",
+    "section": "2B.59\u20132B.60",
+    "page": 173,
+    "crop": [
+      171.91219787597657,
+      474.0881774902344,
+      262.56920166015624,
+      582.7471801757813
+    ]
+  },
+  {
+    "id": "R10-12b",
+    "code": "R10-12b",
+    "name": "Left turn yield to bicycles",
+    "width": 30,
+    "height": 36,
+    "group": "Traffic signals",
+    "section": "2B.59\u20132B.60",
+    "page": 173,
+    "crop": [
+      285.91648559570314,
+      474.08921508789064,
+      376.57347412109374,
+      582.7482177734375
+    ]
+  },
+  {
+    "id": "R10-13",
+    "code": "R10-13",
+    "name": "Emergency signal",
+    "width": 36,
+    "height": 24,
+    "group": "Traffic signals",
+    "section": "2B.59\u20132B.60",
+    "page": 173,
+    "crop": [
+      399.92139892578126,
+      511.0327880859375,
+      508.57240600585936,
+      583.6827880859375
+    ]
+  },
+  {
+    "id": "R10-14a",
+    "code": "R10-14a",
+    "name": "Emergency signal \u2014 stop on flashing red, overhead",
+    "width": 60,
+    "height": 24,
+    "group": "Traffic signals",
+    "section": "2B.59\u20132B.60",
+    "page": 173,
+    "crop": [
+      210.90920715332032,
+      661.743603515625,
+      391.57322998046874,
+      734.3995849609375
+    ]
+  },
+  {
+    "id": "R10-15",
+    "code": "R10-15",
+    "name": "Turning vehicles yield to pedestrians \u2014 right",
+    "width": 30,
+    "height": 30,
+    "group": "Traffic signals",
+    "section": "2B.59\u20132B.60",
+    "page": 174,
+    "crop": [
+      67.30039672851562,
+      93.22622375488281,
+      157.7074005126953,
+      183.6332275390625
+    ]
+  },
+  {
+    "id": "R10-15a",
+    "code": "R10-15a",
+    "name": "Turning vehicles stop for pedestrians \u2014 right",
+    "width": 30,
+    "height": 30,
+    "group": "Traffic signals",
+    "section": "2B.59\u20132B.60",
+    "page": 174,
+    "crop": [
+      208.43569641113282,
+      93.22622375488281,
+      298.8427001953125,
+      183.6332275390625
+    ]
+  },
+  {
+    "id": "R10-16",
+    "code": "R10-16",
+    "name": "U-turn yield to right turn",
+    "width": 30,
+    "height": 36,
+    "group": "Traffic signals",
+    "section": "2B.59\u20132B.60",
+    "page": 174,
+    "crop": [
+      349.3325927734375,
+      75.10032348632812,
+      439.99058837890624,
+      183.759326171875
+    ]
+  },
+  {
+    "id": "R10-17a",
+    "code": "R10-17a",
+    "name": "Right on red arrow after stop",
+    "width": 30,
+    "height": 36,
+    "group": "Traffic signals",
+    "section": "2B.59\u20132B.60",
+    "page": 174,
+    "crop": [
+      481.16859130859376,
+      75.10032348632812,
+      571.8256103515625,
+      183.759326171875
+    ]
+  },
+  {
+    "id": "R10-23",
+    "code": "R10-23",
+    "name": "Crosswalk \u2014 stop on red",
+    "width": 24,
+    "height": 30,
+    "group": "Traffic signals",
+    "section": "2B.59\u20132B.60",
+    "page": 174,
+    "crop": [
+      268.07969360351564,
+      226.03878479003907,
+      340.73570556640624,
+      316.69578857421874
+    ]
+  },
+  {
+    "id": "R10-23a",
+    "code": "R10-23a",
+    "name": "Stop on red \u2014 yield on flashing red after stop",
+    "width": 24,
+    "height": 30,
+    "group": "Traffic signals",
+    "section": "2B.59\u20132B.60",
+    "page": 174,
+    "crop": [
+      374.6235778808594,
+      226.03878479003907,
+      447.27958984375,
+      316.69578857421874
+    ]
+  },
+  {
+    "id": "R10-27",
+    "code": "R10-27",
+    "name": "Left turn yield on flashing red arrow after stop",
+    "width": 30,
+    "height": 36,
+    "group": "Traffic signals",
+    "section": "2B.59\u20132B.60",
+    "page": 174,
+    "crop": [
+      481.16859130859376,
+      208.0367858886719,
+      571.8256103515625,
+      316.69578857421874
+    ]
+  },
+  {
+    "id": "R10-30",
+    "code": "R10-30",
+    "name": "Right turn on red must yield to U-turn",
+    "width": 30,
+    "height": 36,
+    "group": "Traffic signals",
+    "section": "2B.59\u20132B.60",
+    "page": 174,
+    "crop": [
+      310.53089599609376,
+      340.8751953125,
+      401.1879150390625,
+      449.53419799804686
+    ]
+  },
+  {
+    "id": "R10-28",
+    "code": "R10-28",
+    "name": "One vehicle per green",
+    "width": 24,
+    "height": 30,
+    "group": "Traffic signals",
+    "section": "2B.61",
+    "page": 176,
+    "crop": [
+      218.17879943847657,
+      280.6509216308594,
+      290.8278076171875,
+      371.29991455078124
+    ]
+  },
+  {
+    "id": "R10-29",
+    "code": "R10-29",
+    "name": "One vehicle per green each lane",
+    "width": 36,
+    "height": 24,
+    "group": "Traffic signals",
+    "section": "2B.61",
+    "page": 176,
+    "crop": [
+      314.45908813476564,
+      298.6509216308594,
+      423.1071044921875,
+      371.29991455078124
+    ]
+  },
+  {
+    "id": "R10-18a",
+    "code": "R10-18a",
+    "name": "Traffic signal photo enforced",
+    "width": 30,
+    "height": 42,
+    "group": "Traffic signals",
+    "section": "2B.69",
+    "page": 181,
+    "crop": [
+      209,
+      255,
+      299,
+      379.5
+    ]
+  },
+  {
+    "id": "R10-19P",
+    "code": "R10-19P",
+    "name": "Photo enforced \u2014 camera plaque",
+    "width": 24,
+    "height": 12,
+    "group": "Traffic signals",
+    "section": "2B.69",
+    "page": 181,
+    "crop": [
+      322,
+      344.5,
+      394,
+      379.5
+    ]
+  },
+  {
+    "id": "R10-19aP",
+    "code": "R10-19aP",
+    "name": "Photo enforced \u2014 word plaque",
+    "width": 24,
+    "height": 18,
+    "group": "Traffic signals",
+    "section": "2B.69",
+    "page": 181,
+    "crop": [
+      416,
+      326,
+      488,
+      379.5
+    ]
+  },
+  {
+    "id": "R10-40",
+    "code": "R10-40",
+    "name": "Bicycle signal \u2014 left only",
+    "width": 24,
+    "height": 36,
+    "group": "Bicycle signals",
+    "section": "9B.22",
+    "page": 1094,
+    "crop": [
+      158.435498046875,
+      386.73658447265626,
+      195.80150146484374,
+      451.64259643554686
+    ]
+  },
+  {
+    "id": "R10-40a",
+    "code": "R10-40a",
+    "name": "Bicycle signal \u2014 through only",
+    "width": 24,
+    "height": 36,
+    "group": "Bicycle signals",
+    "section": "9B.22",
+    "page": 1094,
+    "crop": [
+      215.164990234375,
+      386.73658447265626,
+      252.53099365234374,
+      451.64259643554686
+    ]
+  },
+  {
+    "id": "R10-41",
+    "code": "R10-41",
+    "name": "Bicycle signal \u2014 through or right",
+    "width": 24,
+    "height": 36,
+    "group": "Bicycle signals",
+    "section": "9B.22",
+    "page": 1094,
+    "crop": [
+      271.89451293945314,
+      386.73658447265626,
+      309.2615234375,
+      451.64259643554686
+    ]
+  },
+  {
+    "id": "R10-41a",
+    "code": "R10-41a",
+    "name": "Bicycle signal \u2014 left or right",
+    "width": 24,
+    "height": 36,
+    "group": "Bicycle signals",
+    "section": "9B.22",
+    "page": 1094,
+    "crop": [
+      328.62400512695314,
+      386.73658447265626,
+      365.991015625,
+      451.64259643554686
+    ]
+  },
+  {
+    "id": "R10-41b",
+    "code": "R10-41b",
+    "name": "Bicycle signal \u2014 left, through or right",
+    "width": 24,
+    "height": 36,
+    "group": "Bicycle signals",
+    "section": "9B.22",
+    "page": 1094,
+    "crop": [
+      385.35340576171876,
+      386.73658447265626,
+      422.7203857421875,
+      451.64259643554686
+    ]
+  },
+  {
+    "id": "R10-41c",
+    "code": "R10-41c",
+    "name": "Bicycle signal \u2014 through or left",
+    "width": 24,
+    "height": 36,
+    "group": "Bicycle signals",
+    "section": "9B.22",
+    "page": 1094,
+    "crop": [
+      442.08289794921876,
+      386.7364929199219,
+      479.45189208984374,
+      451.64650268554686
+    ]
+  }
+]

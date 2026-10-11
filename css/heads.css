@@ -1,0 +1,205 @@
+#workspace {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1.5rem 4.5rem;
+}
+
+#previewStage {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+}
+
+.previewEmpty { display: flex; flex-direction: column; align-items: center; gap: 0.5rem; font-size: 0.8rem; }
+#headContainer { display: flex; align-items: center; flex: 0 0 auto; }
+#headContainer[data-alignment="top"] { align-items: flex-start; }
+#headContainer[data-alignment="bottom"] { align-items: flex-end; }
+.previewHead { position: relative; flex: 0 0 auto; cursor: grab; touch-action: none; user-select: none; }
+.previewHead svg, .dragGhost > svg { display: block; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+.previewHead:focus-visible { outline: 2px solid var(--textColor); }
+#headContainer.mastScene, #headContainer.spanScene { display: block; position: relative; }
+.mastScene .previewHead, .spanScene .previewHead { position: absolute; }
+.mastSupport, .spanSupport { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+
+.previewHead.panelWiggle {
+  animation: textEditorBlockWiggle 0.12s ease-in-out infinite alternate;
+  animation-delay: var(--wiggle-delay, 0s);
+  cursor: grab;
+}
+.previewHead.dragging { opacity: 0.5; cursor: grabbing; animation: none; }
+@keyframes textEditorBlockWiggle {
+  from { transform: rotate(-2deg) scale(1.02); }
+  to { transform: rotate(2deg) scale(1.02); }
+}
+.previewHead.dropBefore::before, .previewHead.dropAfter::after {
+  content: "";
+  position: absolute;
+  top: 10%;
+  bottom: 10%;
+  width: 0.3rem;
+  border-radius: 0.2rem;
+  background: var(--selectedColor, rgb(100, 150, 255));
+  pointer-events: none;
+  z-index: 10;
+}
+.previewHead.dropBefore::before { left: 0.25rem; }
+.previewHead.dropAfter::after { right: 0.25rem; }
+@keyframes flashSelection {
+  0% { outline: 0.5rem solid yellow; }
+  15% { outline: 1.125rem solid yellow; }
+  25% { outline: 0.5rem solid yellow; }
+  100% { outline: 0.5rem solid rgba(255, 255, 0, 0); }
+}
+.flash-selection {
+  position: absolute;
+  pointer-events: none;
+  z-index: 50;
+  background: transparent;
+  animation: flashSelection 0.5s ease-in forwards;
+}
+.dragGhost { position: fixed; margin: 0; z-index: 10; pointer-events: none; opacity: 0.8; }
+.dragGhost:has(.aplArrowListItem) { background: var(--hotbarColor); }
+.modals { z-index: 1; }
+#headEditor { width: 24rem; }
+.editorContent { max-height: calc(100dvh - 8rem); }
+
+input, select {
+  appearance: auto;
+  margin: 0;
+  padding: 0.25rem;
+  border: 0;
+  border-radius: 0;
+  min-width: 0;
+  background: rgb(var(--inputColor));
+  color: var(--textColor);
+  font-family: "Inter", sans-serif;
+  font-size: 0.7rem;
+}
+
+input[type="checkbox"] { width: 0.85rem; height: 0.85rem; }
+input[type="range"] { padding: 0; width: 100%; cursor: pointer; }
+input:focus-visible, select:focus-visible, button:focus-visible { outline: 2px solid var(--textColor); outline-offset: 2px; }
+label { font-size: 0.75rem; }
+.fieldRow { display: flex; align-items: center; gap: 0.4rem; margin: 0.35rem 0; }
+.fieldRow > label { flex: 0 0 8.5rem; text-align: right; }
+.fieldRow > input:not([type="checkbox"]), .fieldRow > select { flex: 1; width: 100%; }
+.editorContent button, .headsMenu button, .previewEmpty button { padding: 0.25rem 0.4rem; font-size: 0.7rem; }
+.editorContent button:hover, .headsMenu button:enabled:hover, .previewEmpty button:hover { background: var(--selectedColor); }
+button:disabled { cursor: default; opacity: 0.5; }
+.indicationHeading, .headActions { display: flex; align-items: center; gap: 0.25rem; }
+.indicationHeading { justify-content: space-between; }
+h3, legend { font-family: "Overpass", sans-serif; font-size: 0.8rem; font-weight: 600; }
+fieldset { min-width: 0; margin: 0.6rem 0 0; padding: 0.4rem; border: 1px solid rgba(var(--baseColor), 0.45); }
+legend { padding: 0 0.25rem; }
+.aplArrowEditorBlock { position: relative; }
+.aplArrowListItem {
+  display: grid;
+  grid-template-columns: 3rem minmax(0, 1fr) 3rem 4.5rem;
+  gap: 0.45rem;
+  align-items: center;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  overflow: hidden;
+  margin: 0.35rem 0;
+  padding: 0;
+}
+.aplArrowListItem > * { min-width: 0; box-sizing: border-box; }
+.aplArrowListItem select { width: 100%; }
+.editorContent .aplArrowDragHandle, .editorContent .aplArrowDeleteButton { padding: 0.35rem 0.55rem; }
+.aplArrowDragHandle { width: 3rem; cursor: grab; touch-action: none; }
+.aplArrowDeleteButton { width: 4.5rem; }
+.aplArrowEditorBlock > .fieldRow > label { flex-basis: 3rem; }
+.aplArrowListItem.dragging, .aplArrowEditorBlock.dragOver { outline: 2px solid var(--selectedColor); }
+.aplArrowEditorBlock.dropBefore::before, .aplArrowEditorBlock.dropAfter::after {
+  content: "";
+  position: absolute;
+  left: 10%;
+  right: 10%;
+  height: 0.15rem;
+  background: var(--selectedColor);
+  pointer-events: none;
+}
+.aplArrowEditorBlock.dropBefore::before { top: 0; }
+.aplArrowEditorBlock.dropAfter::after { bottom: 0; }
+hr { border: 0; border-top: 1px solid rgba(var(--baseColor), 0.45); margin: 0.75rem 0; }
+#headEditorEmpty button { margin-top: 0.5rem; }
+
+.headsMenu { width: min(16rem, calc(100vw - 1rem)); max-height: calc(100dvh - 5rem); overflow-y: auto; }
+.headActions { margin-top: 0.5rem; }
+.headActions button { flex: 1; padding: 0.25rem; }
+.headPopoverHeader { display: flex; align-items: baseline; justify-content: space-between; gap: 0.25rem; width: 100%; }
+.headPopoverHint { font-size: 0.65rem; opacity: 0.8; font-family: inherit; }
+#headList { display: flex; flex-direction: column; gap: 0.2rem; width: 100%; list-style: none; padding: 0 0.15rem 0 0; margin: 0.5rem 0; max-height: 8.5rem; overflow-y: auto; }
+#headList li { flex: 0 0 auto; }
+.headListButton {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.25rem 0.4rem;
+  font-size: 0.75rem;
+  text-align: left;
+  overflow-wrap: anywhere;
+  background: rgba(var(--baseColor), 0.3);
+  border: 1px solid transparent;
+  border-radius: 0;
+  position: relative;
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+}
+.headListButton.active { border-color: var(--selectedColor); background: rgba(var(--baseColor), 0.6); }
+.headListButton.panelWiggle { animation: textEditorBlockWiggle 0.12s ease-in-out infinite alternate; animation-delay: var(--wiggle-delay, 0s); }
+.headListButton.dragging { opacity: 0.5; cursor: grabbing; animation: none !important; }
+.headListButton.dropBefore::before, .headListButton.dropAfter::after {
+  content: "";
+  position: absolute;
+  left: 0.35rem;
+  right: 0.35rem;
+  height: 0.15rem;
+  background: var(--selectedColor);
+  border-radius: 0.15rem;
+  pointer-events: none;
+}
+.headListButton.dropBefore::before { top: -0.1rem; }
+.headListButton.dropAfter::after { bottom: -0.1rem; }
+.spacingInputs { display: flex; align-items: center; gap: 0.4rem; margin-top: 0.3rem; }
+.spacingInputs input[type="number"] { width: 3.5rem; }
+.dimensionInputs { display: flex; align-items: center; gap: 0.4rem; flex: 1; min-width: 0; }
+.dimensionInputs input[type="range"] { flex: 1; min-width: 2.5rem; }
+.dimensionInputs input[type="number"] { width: 3.5rem; }
+
+#actionStatus {
+  position: fixed;
+  bottom: 3.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: calc(100vw - 1rem);
+  background: var(--hotbarColor);
+  font-size: 0.7rem;
+  z-index: 4;
+}
+#actionStatus:not(:empty) { padding: 0.35rem 0.6rem; }
+
+@media (prefers-reduced-motion: reduce) {
+  .previewHead.panelWiggle { animation: none; }
+  .flash-selection { animation: none; outline: 0.5rem solid yellow; }
+}
+
+@media (max-width: 768px) {
+  #workspace { padding: 1rem 0.5rem 4rem; }
+  #headEditor { width: 100%; }
+  .editorContent { max-height: 42dvh; }
+  .fieldRow > label { flex-basis: 8rem; }
+  .headsMenu { max-height: 55dvh; }
+  #actionStatus { bottom: calc(3.2rem + env(safe-area-inset-bottom)); }
+}
