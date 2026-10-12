@@ -37,7 +37,7 @@
         <div class="fieldRow"><label for="supportKind">Support Kind:</label><select id="supportKind"><option value="none">None</option><option value="mast-arm">Mast arm</option><option value="span-wire">Span wire</option></select></div>
         <div id="mastArmOptions" hidden>
           <div class="headActions"><button type="button" data-head-action="add-supplementary" hidden>Add Supplementary Head</button></div>
-          <div class="fieldRow"><label for="armLength">Arm Length (ft):</label><div class="dimensionInputs"><input id="armLength" type="range" min="10" max="78" step="0.5" value="40" /><input id="armLengthValue" type="number" min="10" max="78" step="0.5" value="40" aria-label="Arm length in feet" /></div></div>
+          <div class="fieldRow"><label for="armLength">Arm Length (ft):</label><div class="dimensionInputs"><input id="armLength" type="range" min="10" max="150" step="0.5" value="40" /><input id="armLengthValue" type="number" min="10" max="150" step="0.5" value="40" aria-label="Arm length in feet" /></div></div>
           <div class="fieldRow"><label for="mastArmAngle">Arm Angle (°):</label><div class="dimensionInputs"><input id="mastArmAngle" type="range" min="0" max="15" step="0.2" value="0" /><input id="mastArmAngleValue" type="number" min="0" max="15" step="0.2" value="0" aria-label="Mast arm angle in degrees" /></div></div>
           <div class="fieldRow"><label for="mastBowAngle">Bow Angle (°):</label><div class="dimensionInputs"><input id="mastBowAngle" type="range" min="0" max="20" step="0.2" value="0" /><input id="mastBowAngleValue" type="number" min="0" max="20" step="0.2" value="0" aria-label="Mast arm bow angle in degrees" /></div></div>
           <div id="mastBowPositionOptions" class="fieldRow" hidden><label for="mastBowPosition">Bow Point (ft):</label><div class="dimensionInputs"><input id="mastBowPosition" type="range" step="any" value="20" /><input id="mastBowPositionValue" type="number" step="any" value="20" aria-label="Mast arm bow point from the connection in feet" /></div></div>
@@ -54,7 +54,7 @@
           <div class="fieldRow"><label for="rightPostWidth">Right Post Width (in):</label><input id="rightPostWidth" data-support-field="rightPostWidth" type="number" min="12" max="36" step="0.5" value="18" /></div>
         </div>
         <div id="supportColorOptions" hidden>
-          <div class="fieldRow"><label for="supportColor">Support Color:</label><select id="supportColor"><option value="#a9a9a9">Silver</option><option value="#252628">Black</option><option value="#654321">Brown</option><option value="#c62828">Red</option></select></div>
+          <div class="fieldRow"><label for="supportColor">Support Color:</label><select id="supportColor"><option value="#a9a9a9">Silver</option><option value="#252628">Black</option><option value="#654321">Brown</option><option value="#c62828">Red</option><option value="#3d4b35">Olive Green</option></select></div>
         </div>
         <div id="headAlignmentOptions" class="fieldRow"><label for="headAlignment">Head Alignment:</label><select id="headAlignment"><option value="center">Center</option><option value="top">Top</option><option value="bottom">Bottom</option></select></div>
         <div id="supportHeadSpacingOptions" class="headActions" hidden>

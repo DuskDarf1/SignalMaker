@@ -154,7 +154,7 @@
       rightPostHeight: number('rightPostHeight', span.minPostHeight, span.maxPostHeight, span.defaultPostHeight),
       leftPostWidth: number('leftPostWidth', span.minPostWidth, span.maxPostWidth, span.defaultPostWidth),
       rightPostWidth: number('rightPostWidth', span.minPostWidth, span.maxPostWidth, span.defaultPostWidth),
-      color: ['#a9a9a9', '#252628', '#654321', '#c62828'].includes(color) ? color : '#a9a9a9' };
+      color: ['#a9a9a9', '#252628', '#654321', '#c62828', '#3d4b35'].includes(color) ? color : '#a9a9a9' };
     setMastBowWidth(support, value?.bowWidth);
     setMastBowPosition(support, value?.bowPosition);
     return support;
@@ -244,20 +244,20 @@
     setArmPosition(head, project.support, best.position);
   }
 
-  function canSpaceHeadsEvenly(project) {
+  function canSpaceHeadsEvenly(project, start = 0, end = supportLength(project.support)) {
     const heads = project.heads.filter(head => !hasMast(project) || !head.poleMounted);
     return hasSupport(project) && heads.length > 1
-      && heads.reduce((width, head) => width + headGeometry(head).width, 0) <= supportProjectedLength(project.support);
+      && heads.reduce((width, head) => width + headGeometry(head).width, 0) <= supportXAtPosition(project.support, end) - supportXAtPosition(project.support, start);
   }
 
-  function spaceHeadsEvenly(project) {
-    if (!canSpaceHeadsEvenly(project)) return false;
+  function spaceHeadsEvenly(project, start = 0, end = supportLength(project.support)) {
+    if (!canSpaceHeadsEvenly(project, start, end)) return false;
     const length = supportLength(project.support);
     const heads = project.heads.filter(head => !hasMast(project) || !head.poleMounted).map((head, index) => ({ head, width: headGeometry(head).width,
       position: Number.isFinite(head.armPosition) ? head.armPosition : length * (index + 1) / (project.heads.length + 1) }))
       .sort((a, b) => a.position - b.position);
-    const gap = (supportProjectedLength(project.support) - heads.reduce((width, item) => width + item.width, 0)) / (heads.length + 1);
-    let edge = gap;
+    const gap = (supportXAtPosition(project.support, end) - supportXAtPosition(project.support, start) - heads.reduce((width, item) => width + item.width, 0)) / (heads.length + 1);
+    let edge = supportXAtPosition(project.support, start) + gap;
     heads.forEach(({ head, width }) => {
       setArmPosition(head, project.support, supportPositionAtX(project.support, edge + width / 2));
       edge += width + gap;
@@ -275,7 +275,11 @@
     const poleAtArm = profile.poleDiameter - mast.taperPerFoot * (mast.armHeight - mast.baseThickness) / 12;
     const armX = poleX + poleAtArm / 2 + 2;
     const armBaseDiameter = profile.armDiameter;
-    const armTipDiameter = armBaseDiameter - mast.taperPerFoot * support.length / 12;
+    // Requested schematic extension beyond 70 ft: retain the largest catalog
+    // profile (18-inch arm above 70 ft), with a constant tube diameter through
+    // 150 ft. Pole taper remains unchanged; no extrapolated FDOT profile.
+    const armTipDiameter = support.length > mast.untaperedAboveLength ? armBaseDiameter
+      : armBaseDiameter - mast.taperPerFoot * support.length / 12;
     const curve = mastCurve(support);
     const armAt = position => {
       const point = curve.at(position);

@@ -203,3 +203,43 @@ hr { border: 0; border-top: 1px solid rgba(var(--baseColor), 0.45); margin: 0.75
   .headsMenu { max-height: 55dvh; }
   #actionStatus { bottom: calc(3.2rem + env(safe-area-inset-bottom)); }
 }
+
+/* Yellow range handles are editor overlays, sized for pointer and touch use. */
+.spacingRangeLine {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+  z-index: 59;
+}
+.spacingRangeLine path {
+  fill: none;
+  stroke: #ffdf00;
+  stroke-width: 2px;
+  vector-effect: non-scaling-stroke;
+}
+button.spacingRangeHandle {
+  position: absolute;
+  z-index: 60;
+  transform: translate(-50%, -50%);
+  width: 24px;
+  height: 36px;
+  padding: 7px 5px;
+  background: #ffdf00;
+  color: #252628;
+  border: 1px solid #665900;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  cursor: ew-resize;
+  touch-action: none;
+  user-select: none;
+}
+button.spacingRangeHandle:enabled:hover { background: #ffec66; }
+.spacingRangeHandle::before { content: ""; position: absolute; inset: -5px -10px; }
+.spacingRangeHandle span { display: block; height: 2px; background: #665900; pointer-events: none; }
+.spacingRangeHandle:focus-visible { outline: 3px solid var(--textColor); outline-offset: 3px; }
+.spacingRangeActions p { font-size: 0.75rem; margin: 0 0 0.5rem; }

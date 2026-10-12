@@ -15,6 +15,9 @@
     let indicationDragState = null;
     let touchDragState = null;
     let suppressClickUntil = 0;
+    let spacingRange = null;
+    let spacingDrag = null;
+    let spacingTrigger = null;
     const selectedHead = () => project.heads.find(head => head.id === project.selectedId);
     const options = (values, selected) => Object.entries(values).map(([value, label]) =>
       `<option value="${value}" ${String(selected) === value ? 'selected' : ''}>${label}</option>`).join('');
@@ -52,7 +55,123 @@
       (layout.streetSigns ?? []).forEach(({ geometry, x, y }, index) => {
         Object.assign(signs[index].style, { width: `${geometry.width * scale}px`, height: `${geometry.height * scale}px`, left: `${x * scale}px`, top: `${y * scale}px` });
       });
+      drawSpacingRange();
     }
+
+    // Range endpoints are physical distances; fit and drag use the same curved,
+    // mirrored projection as mounted heads. This temporary UI never enters exports.
+    function spacingPoint(layout, position) {
+      const offset = layout.supportOffset ?? { x: 0, y: 0 };
+      if (layout.mast) {
+        const point = layout.mast.armAt(position);
+        return { x: (layout.reversed ? layout.mast.width - point.x : point.x) + offset.x,
+          y: point.y + layout.mast.offsetY + offset.y };
+      }
+      return { x: layout.span.spanX + position + offset.x, y: layout.span.upperAt(position) + offset.y };
+    }
+
+    function drawSpacingRange() {
+      if (!spacingRange) return;
+      const container = get('headContainer');
+      if (!container) return;
+      const layout = app.scene(project);
+      const scale = container.clientWidth / layout.width;
+      let line = get('spacing-range-line');
+      if (!line) {
+        line = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        line.id = 'spacing-range-line';
+        line.setAttribute('aria-hidden', 'true');
+        line.classList.add('spacingRangeLine');
+        line.append(document.createElementNS('http://www.w3.org/2000/svg', 'path'));
+        container.append(line);
+      }
+      line.setAttribute('viewBox', `0 0 ${layout.width} ${layout.height}`);
+      // Sample the support mapping so the connector follows both the mast bow
+      // and span sag, including mirrored arms and scene offsets.
+      const points = Array.from({ length: 129 }, (_, index) => spacingPoint(layout,
+        spacingRange.start + (spacingRange.end - spacingRange.start) * index / 128));
+      line.firstElementChild.setAttribute('d', points.map((point, index) =>
+        `${index ? 'L' : 'M'}${point.x} ${point.y}`).join(' '));
+      for (const end of ['start', 'end']) {
+        let handle = get(`spacing-${end}`);
+        if (!handle) {
+          handle = document.createElement('button');
+          handle.id = `spacing-${end}`;
+          handle.type = 'button';
+          handle.className = 'spacingRangeHandle';
+          handle.dataset.spacingEnd = end;
+          handle.setAttribute('role', 'slider');
+          handle.setAttribute('aria-label', `Spacing range ${end}`);
+          handle.title = 'Drag to adjust spacing range; use left/right arrow keys';
+          handle.innerHTML = '<span></span><span></span><span></span>';
+          container.append(handle);
+        }
+        const point = spacingPoint(layout, spacingRange[end]);
+        handle.style.left = `${point.x * scale}px`;
+        handle.style.top = `${point.y * scale}px`;
+        handle.setAttribute('aria-valuemin', '0');
+        handle.setAttribute('aria-valuemax', String(app.supportLength(project.support) / 12));
+        handle.setAttribute('aria-valuenow', String(spacingRange[end] / 12));
+        handle.setAttribute('aria-valuetext', `${(spacingRange[end] / 12).toFixed(1)} feet from connection`);
+      }
+    }
+
+    function moveSpacingEnd(end, position) {
+      const width = project.heads.filter(head => !app.hasMast(project) || !head.poleMounted)
+        .reduce((sum, head) => sum + app.headGeometry(head).width, 0);
+      const support = project.support;
+      const otherX = app.supportXAtPosition(support, spacingRange[end === 'start' ? 'end' : 'start']);
+      const min = end === 'start' ? 0 : app.supportPositionAtX(support, otherX + width);
+      const max = end === 'end' ? app.supportLength(support) : app.supportPositionAtX(support, otherX - width);
+      spacingRange[end] = Math.max(min, Math.min(max, position));
+      drawSpacingRange();
+    }
+
+    function finishSpacing(confirm = false) {
+      if (!spacingRange) return;
+      if (confirm) app.spaceHeadsEvenly(project, spacingRange.start, spacingRange.end);
+      spacingRange = null;
+      spacingDrag = null;
+      refresh(false);
+      get(spacingTrigger)?.focus({ preventScroll: true });
+    }
+
+    stage.addEventListener('pointerdown', event => {
+      const handle = event.target.closest('[data-spacing-end]');
+      if (!handle || event.button !== 0 || !event.isPrimary) return;
+      event.preventDefault();
+      const rect = get('headContainer').getBoundingClientRect();
+      const layout = app.scene(project);
+      const scale = rect.width / layout.width;
+      spacingDrag = { end: handle.dataset.spacingEnd, pointerId: event.pointerId,
+        x: event.clientX, projected: app.supportXAtPosition(project.support, spacingRange[handle.dataset.spacingEnd]),
+        scale, direction: layout.reversed ? -1 : 1, original: spacingRange[handle.dataset.spacingEnd] };
+      handle.focus({ preventScroll: true });
+      stage.setPointerCapture(event.pointerId);
+    });
+    stage.addEventListener('pointermove', event => {
+      if (!spacingDrag || spacingDrag.pointerId !== event.pointerId) return;
+      event.preventDefault();
+      moveSpacingEnd(spacingDrag.end, app.supportPositionAtX(project.support,
+        spacingDrag.projected + (event.clientX - spacingDrag.x) / spacingDrag.scale * spacingDrag.direction));
+    });
+    for (const type of ['pointerup', 'pointercancel']) stage.addEventListener(type, event => {
+      if (!spacingDrag || spacingDrag.pointerId !== event.pointerId) return;
+      if (type === 'pointercancel') moveSpacingEnd(spacingDrag.end, spacingDrag.original);
+      spacingDrag = null;
+      if (stage.hasPointerCapture(event.pointerId)) stage.releasePointerCapture(event.pointerId);
+    });
+    stage.addEventListener('keydown', event => {
+      const handle = event.target.closest('[data-spacing-end]');
+      if (!handle || !spacingRange) return;
+      const end = handle.dataset.spacingEnd;
+      if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) {
+        event.preventDefault();
+        const direction = (event.key === 'ArrowRight' ? 1 : -1) * (app.hasMast(project) && project.support.side === 'left' ? -1 : 1);
+        moveSpacingEnd(end, event.key === 'Home' ? 0 : event.key === 'End' ? app.supportLength(project.support)
+          : spacingRange[end] + direction * (event.shiftKey ? 12 : 3));
+      } else if (event.key === 'Enter') { event.preventDefault(); finishSpacing(true); }
+    });
 
     function updateOptions(head) {
       if (!head) return;
@@ -104,6 +223,11 @@
     }
 
     function refresh(rebuildEditor = true) {
+      // Geometry or head edits end the pending selection rather than applying a
+      // stale range to a different support or set of head envelopes.
+      if (spacingRange) { spacingRange = null; spacingDrag = null; }
+      document.querySelectorAll('.spacingRangeActions').forEach(element => element.remove());
+      for (const id of ['spaceHeadsEvenly', 'spaceSupportHeadsEvenly']) get(id).hidden = false;
       const focusId = document.activeElement?.id;
       const scroll = form.parentElement.scrollTop;
       const listScroll = headList.scrollTop;
@@ -219,8 +343,22 @@
       const action = event.target.closest('[data-head-action]')?.dataset.headAction;
       if (action === 'add-supplementary' && app.hasMast(project)) return addHead(Boolean(event.target.closest('#headsMenu')), true);
       if (action === 'add') return addHead(Boolean(event.target.closest('#headsMenu')));
+      if (action === 'confirm-spacing') { finishSpacing(true); return; }
+      if (action === 'cancel-spacing') { finishSpacing(); return; }
       if (action === 'space-evenly') {
-        if (app.spaceHeadsEvenly(project)) refresh(false);
+        if (!app.canSpaceHeadsEvenly(project)) return;
+        spacingTrigger = event.target.closest('button').id;
+        spacingRange = { start: 0, end: app.supportLength(project.support) };
+        for (const id of ['spaceHeadsEvenly', 'spaceSupportHeadsEvenly']) {
+          const button = get(id);
+          button.hidden = true;
+          const controls = document.createElement('div');
+          controls.className = 'spacingRangeActions';
+          controls.innerHTML = '<p role="status">Drag the yellow handles to choose the spacing range.</p><button type="button" data-head-action="confirm-spacing">Confirm</button> <button type="button" data-head-action="cancel-spacing">Cancel</button>';
+          button.after(controls);
+        }
+        drawSpacingRange();
+        get('spacing-start')?.focus({ preventScroll: true });
         return;
       }
       const head = selectedHead();
@@ -581,6 +719,7 @@
     document.addEventListener('pointercancel', event => endTouchDrag(event, true));
     document.addEventListener('keydown', event => {
       if (event.key !== 'Escape') return;
+      finishSpacing();
       if (touchDragState) endTouchDrag({ pointerId: touchDragState.pointerId }, true);
       endHeadDrag();
       endHeadListDrag();

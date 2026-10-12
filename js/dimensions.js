@@ -14,7 +14,8 @@ window.SignalMaker = {
     bicycle: { width: 9, height: 5, wheelOuterRadius: 1.6875, stroke: 0.3125 },
     bus: { referenceDiameter: 44, length: 30.668, width: 6.666 },
     mast: {
-      minLength: 120, maxLength: 936, defaultLength: 480, taperPerFoot: 0.14,
+      minLength: 120, maxLength: 1800, defaultLength: 480, taperPerFoot: 0.14,
+      untaperedAboveLength: 840,
       minBowWidth: 12, bowTransitionLength: 48, bowTransitionRatio: 0.2,
       poleHeight: 300, armHeight: 264, baseThickness: 2.5,
       profiles: [
