@@ -313,6 +313,27 @@
 
     function updateOptions(head) {
       if (!head) return;
+      form.querySelectorAll('[data-head-choice]').forEach(button => {
+        const field = button.dataset.headChoice;
+        const value = field === 'layout' ? head.hawk ? 'hawk' : head.cluster ? 'cluster' : 'linear' : head[field];
+        const selected = button.dataset.value === value;
+        button.classList.toggle('selected', selected);
+        button.setAttribute('aria-pressed', String(selected));
+        button.disabled = field === 'orientation' && (head.cluster || head.hawk);
+      });
+      for (const [id, field] of [['headBackplateMargin', 'backplateMargin'], ['headReflectiveWidth', 'reflectiveWidth']]) {
+        if (document.activeElement !== get(id)) get(id).value = head[field];
+        get(`${id}Value`).value = head[field];
+      }
+      // Refresh mounted controls too, so an old disabled state cannot linger.
+      head.indications.forEach(section => {
+        const color = get(`color-${section.id}`);
+        if (!color) return;
+        const markup = options(app.indicationColors(section.symbol), section.color);
+        if (color.innerHTML !== markup) color.innerHTML = markup;
+        color.disabled = head.hawk === true;
+        color.value = section.color;
+      });
       get('backplateOptions').hidden = head.backplate === 'none';
       get('reflectiveOptions').hidden = head.backplate !== 'reflective';
       get('fullBackplateOptions').hidden = !head.hawk && head.indications.length !== 5;
@@ -344,8 +365,7 @@
       });
       get('addIndication').disabled = head.cluster || head.hawk || head.indications.length >= 5;
       get('addIndication').title = head.hawk ? 'HAWK beacons have three indications'
-        : head.cluster ? 'Clusters always have five indications' : 'Up to five indications per head';
-      get('headOrientation').disabled = head.cluster || head.hawk;
+        : head.cluster ? 'Doghouses always have five indications' : 'Up to five indications per head';
       const positions = head.hawk ? ['Upper left', 'Upper right', 'Bottom']
         : ['Top', 'Upper left', 'Upper right', 'Lower left', 'Lower right'];
       indicationList.innerHTML = head.indications.map((section, index) => `<fieldset class="aplArrowEditorBlock" data-indication-id="${section.id}">
@@ -359,7 +379,7 @@
           <select id="size-${section.id}" data-indication-field="size" aria-label="Indication ${index + 1} lens size">${options({ 8: '8 in', 12: '12 in' }, section.size)}</select>
           <button type="button" class="aplArrowDeleteButton" data-indication-action="remove" ${head.cluster || head.hawk || head.indications.length === 1 ? 'disabled' : ''} aria-label="Delete indication ${index + 1}">Delete</button>
         </div>
-        <div class="fieldRow"><label for="color-${section.id}">Color:</label><select id="color-${section.id}" data-indication-field="color" ${head.hawk || app.isBusSymbol(section.symbol) ? 'disabled' : ''}>${options(app.isBusSymbol(section.symbol) ? { white: 'White' } : { red: 'Red', yellow: 'Yellow', green: 'Green' }, section.color)}</select></div>
+        <div class="fieldRow"><label for="color-${section.id}">Color:</label><select id="color-${section.id}" data-indication-field="color" ${head.hawk ? 'disabled' : ''}>${options(app.indicationColors(section.symbol), section.color)}</select></div>
       </fieldset>`).join('');
       updateOptions(head);
     }
@@ -553,6 +573,24 @@
       const head = selectedHead();
       if (head) { head.name = event.target.value; refresh(false); }
     });
+    form.addEventListener('click', event => {
+      const button = event.target.closest('[data-head-choice]');
+      const head = selectedHead();
+      if (!button || button.disabled || !head) return;
+      const field = button.dataset.headChoice;
+      if (field === 'layout') app.setHeadLayout(head, button.dataset.value);
+      else if (field === 'orientation') head.orientation = head.cluster || head.hawk ? 'vertical' : button.dataset.value;
+      else head.backplateCorners = button.dataset.value;
+      refresh();
+    });
+    form.addEventListener('input', event => {
+      const input = event.target;
+      const field = input.dataset.headField;
+      const head = selectedHead();
+      if (!head || !['backplateMargin', 'reflectiveWidth'].includes(field)) return;
+      head[field] = field === 'backplateMargin' ? app.normalizePlateMargin(input.valueAsNumber) : app.normalizeReflectiveWidth(input.valueAsNumber);
+      refresh(false);
+    });
     form.addEventListener('change', event => {
       const head = selectedHead();
       if (!head) return;
@@ -562,7 +600,9 @@
       if (field) {
         if (field === 'layout') app.setHeadLayout(head, value);
         else if (field === 'orientation') head.orientation = head.cluster || head.hawk ? 'vertical' : value;
-        else head[field] = ['backplateMargin', 'reflectiveWidth'].includes(field) ? Number(value) : value;
+        else if (field === 'backplateMargin') head[field] = app.normalizePlateMargin(Number(value));
+        else if (field === 'reflectiveWidth') head[field] = app.normalizeReflectiveWidth(Number(value));
+        else head[field] = value;
       } else if (input.dataset.indicationField) {
         if (head.hawk && input.dataset.indicationField !== 'size') return;
         const section = head.indications.find(section => section.id === input.closest('[data-indication-id]').dataset.indicationId);
@@ -572,15 +612,12 @@
           trigger.querySelector('.symbolPickerIcon').innerHTML = app.renderSymbolIcon(value);
           trigger.querySelector('.symbolPickerLabel').textContent = app.symbols[value];
           trigger.setAttribute('aria-label', `Indication ${head.indications.indexOf(section) + 1} symbol: ${app.symbols[value]}`);
-          const color = get(`color-${section.id}`);
-          color.innerHTML = options(app.isBusSymbol(value) ? { white: 'White' } : { red: 'Red', yellow: 'Yellow', green: 'Green' }, section.color);
-          color.disabled = head.hawk || app.isBusSymbol(value);
         }
-        else if (input.dataset.indicationField !== 'color' || !app.isBusSymbol(section.symbol)) {
+        else {
           section[input.dataset.indicationField] = input.dataset.indicationField === 'size' ? Number(value) : value;
         }
       }
-      refresh(input.dataset.indicationField !== 'symbol');
+      refresh(input.dataset.indicationField !== 'symbol' && !['backplateMargin', 'reflectiveWidth'].includes(field));
     });
     get('addIndication').addEventListener('click', () => {
       const head = selectedHead();

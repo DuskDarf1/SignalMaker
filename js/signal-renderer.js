@@ -6,11 +6,15 @@
      const color = app.colors[section.color];
      if (app.isBusSymbol(section.symbol)) {
        const bus = app.dimensions.bus;
-       return `<g transform="translate(${cx} ${cy}) rotate(${app.busAngles[section.symbol]}) scale(${section.size / bus.referenceDiameter})" fill="${app.colors.white}">
+       return `<g transform="translate(${cx} ${cy}) rotate(${app.busAngles[section.symbol]}) scale(${section.size / bus.referenceDiameter})" fill="${color}">
          <rect x="${-bus.width / 2}" y="${-bus.length / 2}" width="${bus.width}" height="${bus.length}"/>
        </g>`;
      }
      if (section.symbol === 'ball') return `<circle cx="${cx}" cy="${cy}" r="${section.size / 2}" fill="${color}"/>`;
+     if (section.symbol === 'triangle') {
+       const points = app.trianglePoints(section.size).map(([x, y]) => `${cx + x},${cy + y}`).join(' ');
+       return `<polygon points="${points}" fill="${color}"/>`;
+     }
      if (section.symbol === 'bicycle') {
        const radius = app.dimensions.bicycle.wheelOuterRadius - app.dimensions.bicycle.stroke / 2;
        return `<g transform="translate(${cx - app.dimensions.bicycle.width / 2 * scale} ${cy - app.dimensions.bicycle.height / 2 * scale}) scale(${scale})" fill="none" stroke="${color}" stroke-width="${app.dimensions.bicycle.stroke}" stroke-linejoin="round" stroke-linecap="round">
@@ -37,7 +41,7 @@
      if (head.backplate !== 'none') {
        const outer = app.backplatePath(head, geometry);
        markup += `<path d="${outer}" fill="#17181a"/>`;
-       if (head.backplate === 'reflective') {
+       if (head.backplate === 'reflective' && head.reflectiveWidth > 0 && geometry.margin > 0) {
          markup += `<path d="${outer} ${app.backplatePath(head, geometry, head.reflectiveWidth)}" fill="#e6ee37" fill-rule="evenodd"/>`;
        }
      }
@@ -391,4 +395,3 @@
 
    Object.assign(app, { scene, renderSVG, renderPreview, renderSymbolIcon });
  })();
-
