@@ -320,9 +320,11 @@
           scale *= 0.75;
         } while (src.length > 512 * 1024);
         if (!project.streetSigns.includes(sign) || iconUploads.get(sign) !== request) return;
-        sign.icon = { src, width: canvas.width, height: canvas.height, name: file.name.slice(0, 160) };
-        iconUploads.delete(sign);
-        app.refresh(false);
+        app.runWithUndo(() => {
+          sign.icon = { src, width: canvas.width, height: canvas.height, name: file.name.slice(0, 160) };
+          iconUploads.delete(sign);
+          app.refresh(false);
+        });
       } catch {
         if (iconUploads.get(sign) !== request) return;
         iconUploads.delete(sign);

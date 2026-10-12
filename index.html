@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="description" content="SignalMaker traffic signal editor." />
-  <title>SignalMaker</title>
+  <title>Traffic Signal Maker</title>
   <script src="js/dimensions.js"></script>
   <script src="js/regulatory-sign-data.js"></script>
   <script src="js/street-font-data.js"></script>
@@ -13,6 +13,7 @@
   <script src="js/signal-renderer.js"></script>
   <script src="js/head-editor.js"></script>
   <script src="js/street-sign-editor.js"></script>
+  <script src="js/history.js"></script>
   <script src="js/main.js"></script>
   <link href="css/page.css" rel="stylesheet" />
   <link href="css/form.css" rel="stylesheet" />
@@ -211,9 +212,17 @@
       aria-pressed="false" title="Dark mode">
       <span class="material-symbols-outlined" aria-hidden="true">dark_mode</span>
     </button>
-    <button type="button" id="clearAll" class="configOption" aria-label="Clear all" title="Clear all">
-      <span class="material-symbols-outlined" aria-hidden="true">delete</span>
-    </button>
+    <div class="historyBar" role="group" aria-label="Drawing history">
+      <button type="button" id="undoButton" class="historyButton" aria-label="Undo" title="Undo" disabled>
+        <span class="material-symbols-outlined" aria-hidden="true">undo</span>
+      </button>
+      <button type="button" id="redoButton" class="historyButton" aria-label="Redo" title="Redo" disabled>
+        <span class="material-symbols-outlined" aria-hidden="true">redo</span>
+      </button>
+      <button type="button" id="clearAll" class="historyButton" aria-label="Clear all" title="Clear all">
+        <span class="material-symbols-outlined" aria-hidden="true">delete</span>
+      </button>
+    </div>
   </nav>
   <!-- SignMaker v2.2's icon selector dialog pattern (GPL-3.0). -->
   <dialog id="regulatorySignPicker" aria-labelledby="regulatorySignPickerTitle">

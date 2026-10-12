@@ -53,6 +53,36 @@ button {
 .configOption:focus-visible { outline: 2px solid var(--textColor); outline-offset: 2px; }
 .configOption:disabled { cursor: default; opacity: 0.5; }
 
+/* SignMaker's bottom-toolbar history controls, at SignalMaker's compact scale. */
+.historyBar {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  gap: 0.25rem;
+}
+.historyButton {
+  width: 1.5rem;
+  min-width: 1.5rem;
+  height: 1.5rem;
+  padding: 0;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  background: rgba(var(--baseColor), 0.25);
+  color: var(--textColor);
+  border: 0;
+  cursor: pointer;
+  transition: 0.15s ease-in-out;
+}
+.historyButton:hover:enabled { background: var(--hoverColor); }
+.historyButton .material-symbols-outlined { font-size: 1rem; line-height: 1; }
+:root[data-theme="dark"] .historyButton { background: rgba(var(--baseColor), 0.1); }
+:root[data-theme="dark"] .historyButton:hover:enabled { background: var(--hoverColor); }
+.historyButton:focus-visible { outline: 2px solid var(--textColor); outline-offset: 2px; }
+.historyButton:disabled { cursor: default; opacity: 0.5; }
+
 :root[data-theme="light"] .activated { background-color: rgb(200, 200, 200); }
 :root[data-theme="dark"] .activated { background-color: rgb(100, 100, 100); }
 .copyPanelContextMenu {

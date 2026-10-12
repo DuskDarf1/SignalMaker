@@ -304,6 +304,7 @@
       if (focusId && document.activeElement?.id !== focusId) get(focusId)?.focus({ preventScroll: true });
       form.parentElement.scrollTop = scroll;
       headList.scrollTop = listScroll;
+      app.recordHistory?.();
       app.onDrawingChanged?.();
     }
 
