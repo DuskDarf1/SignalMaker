@@ -5,19 +5,19 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="description" content="SignalMaker traffic signal editor." />
   <title>Traffic Signal Maker</title>
-  <script src="js/dimensions.js"></script>
+  <script src="js/dimensions.js?v=20261012-triangle-colors"></script>
   <script src="js/regulatory-sign-data.js"></script>
   <script src="js/street-font-data.js"></script>
   <script src="js/street-signs.js"></script>
-  <script src="js/signal-model.js"></script>
-  <script src="js/signal-renderer.js"></script>
-  <script src="js/head-editor.js"></script>
+  <script src="js/signal-model.js?v=20261012-linear-reset"></script>
+  <script src="js/signal-renderer.js?v=20261012-head-controls"></script>
+  <script src="js/head-editor.js?v=20261012-native-symbols"></script>
   <script src="js/street-sign-editor.js"></script>
   <script src="js/history.js"></script>
   <script src="js/main.js"></script>
   <link href="css/page.css" rel="stylesheet" />
-  <link href="css/form.css" rel="stylesheet" />
-  <link href="css/heads.css" rel="stylesheet" />
+  <link href="css/form.css?v=20261012-dark-highlight" rel="stylesheet" />
+  <link href="css/heads.css?v=20261012-symbol-spacing" rel="stylesheet" />
   <link href="css/street-signs.css" rel="stylesheet" />
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet" />
 </head>
@@ -80,15 +80,15 @@
           <div class="fieldRow"><label for="headName">Name:</label><input id="headName" data-head-field="name" maxlength="80" /></div>
           <div id="poleMountingOptions" class="fieldRow" hidden><label for="poleMounting">Mounting:</label><select id="poleMounting" data-head-field="poleMounting"><option value="side">Side brackets</option><option value="direct">Directly mounted</option></select></div>
           <div id="armPositionOptions" class="fieldRow" hidden><label id="armPositionLabel" for="armPosition">Arm Position (ft):</label><div class="dimensionInputs"><input id="armPosition" type="range" step="any" aria-label="Head position along support in feet" /><input id="armPositionValue" type="number" step="any" aria-label="Head position along support in feet" /></div></div>
-          <div class="fieldRow"><label for="headOrientation">Orientation:</label><select id="headOrientation" data-head-field="orientation"><option value="vertical">Vertical</option><option value="horizontal">Horizontal</option></select></div>
+          <div class="fieldRow"><span id="headOrientationLabel" class="fieldLabel">Orientation:</span><div id="headOrientation" class="headChoiceButtons" role="group" aria-labelledby="headOrientationLabel"><button type="button" data-head-choice="orientation" data-value="vertical" aria-pressed="true">Vertical</button><button type="button" data-head-choice="orientation" data-value="horizontal" aria-pressed="false">Horizontal</button></div></div>
           <div class="fieldRow"><label for="headHousingColor">Housing:</label><select id="headHousingColor" data-head-field="housingColor"><option value="black">Black</option><option value="yellow">Federal yellow</option><option value="green">Dark olive green</option></select></div>
-          <div class="fieldRow"><label for="headLayout">Layout:</label><select id="headLayout" data-head-field="layout"><option value="linear">Linear</option><option value="cluster">5-section cluster</option><option value="hawk">HAWK beacon</option></select></div>
+          <div class="fieldRow"><span id="headLayoutLabel" class="fieldLabel">Layout:</span><div id="headLayout" class="headChoiceButtons" role="group" aria-labelledby="headLayoutLabel"><button type="button" data-head-choice="layout" data-value="linear" aria-pressed="true">Linear</button><button type="button" data-head-choice="layout" data-value="cluster" aria-pressed="false">5 section cluster</button><button type="button" data-head-choice="layout" data-value="hawk" aria-pressed="false">HAWK Beacon</button></div></div>
           <div class="fieldRow"><label for="headBackplate">Backplate:</label><select id="headBackplate" data-head-field="backplate"><option value="none">None</option><option value="plain">Non-retroreflective</option><option value="reflective">Retroreflective</option></select></div>
           <div id="backplateOptions" hidden>
-            <div class="fieldRow"><label for="headBackplateMargin">Plate margin (in):</label><select id="headBackplateMargin" data-head-field="backplateMargin"><option value="5">5</option><option value="8">8</option></select></div>
-            <div class="fieldRow"><label for="headBackplateCorners">Plate corners:</label><select id="headBackplateCorners" data-head-field="backplateCorners"><option value="sharp">Sharp</option><option value="round">Round</option></select></div>
+            <div class="fieldRow"><label for="headBackplateMargin">Plate margin (in):</label><div class="dimensionInputs"><input id="headBackplateMargin" data-head-field="backplateMargin" type="range" min="0" max="8" step="1" value="5" /><output id="headBackplateMarginValue" class="headSliderValue" for="headBackplateMargin">5</output></div></div>
+            <div class="fieldRow"><span id="headBackplateCornersLabel" class="fieldLabel">Plate corners:</span><div id="headBackplateCorners" class="headChoiceButtons" role="group" aria-labelledby="headBackplateCornersLabel"><button type="button" data-head-choice="backplateCorners" data-value="round" aria-pressed="true">Round</button><button type="button" data-head-choice="backplateCorners" data-value="sharp" aria-pressed="false">Sharp</button></div></div>
             <div id="fullBackplateOptions" class="fieldRow" hidden><label for="headFullBackplate">Full rectangle:</label><input id="headFullBackplate" type="checkbox" data-head-field="backplateFullRectangle" /></div>
-            <div id="reflectiveOptions" class="fieldRow" hidden><label for="headReflectiveWidth">Reflective border (in):</label><select id="headReflectiveWidth" data-head-field="reflectiveWidth"><option value="1">1</option><option value="2">2</option><option value="3">3</option></select></div>
+            <div id="reflectiveOptions" class="fieldRow" hidden><label for="headReflectiveWidth">Border (in):</label><div class="dimensionInputs"><input id="headReflectiveWidth" data-head-field="reflectiveWidth" type="range" min="0" max="3" step="1" value="2" /><output id="headReflectiveWidthValue" class="headSliderValue" for="headReflectiveWidth">2</output></div></div>
           </div>
           <hr />
           <div class="indicationHeading"><h3>Indications</h3><button id="addIndication" type="button">Add Indication</button></div>

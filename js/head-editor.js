@@ -22,6 +22,184 @@
     const options = (values, selected) => Object.entries(values).map(([value, label]) =>
       `<option value="${value}" ${String(selected) === value ? 'selected' : ''}>${label}</option>`).join('');
 
+    // SignMaker's custom picker pattern, with a floating menu (GPL-3.0).
+    const symbolMenu = document.createElement('div');
+    symbolMenu.id = 'signalSymbolMenu';
+    symbolMenu.className = 'symbolPickerMenu';
+    symbolMenu.setAttribute('role', 'listbox');
+    symbolMenu.setAttribute('aria-label', 'Indication symbol');
+    symbolMenu.setAttribute('aria-hidden', 'true');
+    symbolMenu.inert = true;
+    document.body.append(symbolMenu);
+    const symbolValues = Object.keys(app.symbols);
+    const symbolLabel = value => `<span class="symbolPickerIcon">${app.renderSymbolIcon(value)}</span><span class="symbolPickerLabel">${app.escape(app.symbols[value])}</span>`;
+    let openSymbolPicker = null;
+    let activeSymbolIndex = 0;
+    let symbolPointer = null;
+    let pointerClickTrigger = null;
+
+    function closeSymbolPicker(restoreFocus = false) {
+      const trigger = openSymbolPicker;
+      trigger?.closest('.symbolPicker')?.classList.remove('open');
+      trigger?.setAttribute('aria-expanded', 'false');
+      trigger?.removeAttribute('aria-activedescendant');
+      symbolMenu.classList.remove('open');
+      symbolMenu.setAttribute('aria-hidden', 'true');
+      symbolMenu.inert = true;
+      openSymbolPicker = null;
+      symbolPointer = null;
+      if (restoreFocus && trigger?.isConnected) trigger.focus({ preventScroll: true });
+    }
+
+    function positionSymbolMenu() {
+      if (!openSymbolPicker) return;
+      if (!openSymbolPicker.isConnected || !openSymbolPicker.getClientRects().length) { closeSymbolPicker(); return; }
+      const rect = openSymbolPicker.getBoundingClientRect();
+      const edge = 8, gap = 3;
+      const width = Math.min(Math.max(rect.width, 180), window.innerWidth - edge * 2);
+      const below = Math.max(0, window.innerHeight - rect.bottom - edge - gap);
+      const above = Math.max(0, rect.top - edge - gap);
+      const upwards = below < Math.min(symbolMenu.scrollHeight, 320) && above > below;
+      const height = Math.min(symbolMenu.scrollHeight, window.innerHeight * 0.65, upwards ? above : below);
+      symbolMenu.style.width = `${width}px`;
+      symbolMenu.style.maxHeight = `${height}px`;
+      symbolMenu.style.left = `${Math.max(edge, Math.min(rect.left, window.innerWidth - width - edge))}px`;
+      symbolMenu.style.top = `${upwards ? rect.top - gap - height : rect.bottom + gap}px`;
+      symbolMenu.classList.toggle('opensUp', upwards);
+    }
+
+    function highlightSymbol(index) {
+      activeSymbolIndex = (index + symbolValues.length) % symbolValues.length;
+      const rows = [...symbolMenu.children];
+      rows.forEach((row, rowIndex) => row.classList.toggle('active', rowIndex === activeSymbolIndex));
+      const active = rows[activeSymbolIndex];
+      openSymbolPicker?.setAttribute('aria-activedescendant', active.id);
+      if (active.offsetTop < symbolMenu.scrollTop) symbolMenu.scrollTop = active.offsetTop;
+      else if (active.offsetTop + active.offsetHeight > symbolMenu.scrollTop + symbolMenu.clientHeight) {
+        symbolMenu.scrollTop = active.offsetTop + active.offsetHeight - symbolMenu.clientHeight;
+      }
+    }
+
+    function showSymbolPicker(trigger) {
+      closeSymbolPicker();
+      if (trigger.disabled) return;
+      const select = get(trigger.dataset.symbolSelect);
+      openSymbolPicker = trigger;
+      symbolMenu.innerHTML = symbolValues.map((value, index) => `<button type="button" id="signal-symbol-option-${index}" class="symbolPickerItem${select.value === value ? ' selected' : ''}" role="option" aria-selected="${select.value === value}" tabindex="-1" data-symbol-value="${value}">${symbolLabel(value)}<span class="symbolPickerCheck" aria-hidden="true">${select.value === value ? '✓' : ''}</span></button>`).join('');
+      trigger.closest('.symbolPicker').classList.add('open');
+      trigger.setAttribute('aria-expanded', 'true');
+      symbolMenu.setAttribute('aria-hidden', 'false');
+      symbolMenu.inert = false;
+      positionSymbolMenu();
+      // Measure the closed state before starting SignMaker's opening transition.
+      void symbolMenu.offsetHeight;
+      symbolMenu.classList.add('open');
+      highlightSymbol(symbolValues.indexOf(select.value));
+      trigger.focus({ preventScroll: true });
+    }
+
+    function chooseSymbol(value, trigger = openSymbolPicker) {
+      if (!trigger || trigger.disabled || !Object.hasOwn(app.symbols, value)) return;
+      const select = get(trigger.dataset.symbolSelect);
+      closeSymbolPicker(true);
+      if (select.value === value) return;
+      select.value = value;
+      select.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+
+    indicationList.addEventListener('click', event => {
+      const trigger = event.target.closest('.symbolPickerTrigger');
+      if (!trigger) return;
+      event.preventDefault();
+      event.stopPropagation();
+      if (pointerClickTrigger === trigger && event.detail !== 0) { pointerClickTrigger = null; return; }
+      pointerClickTrigger = null;
+      if (openSymbolPicker === trigger) closeSymbolPicker();
+      else showSymbolPicker(trigger);
+    });
+    indicationList.addEventListener('pointerdown', event => {
+      const trigger = event.target.closest('.symbolPickerTrigger');
+      if (!trigger || trigger.disabled || event.button !== 0 || event.pointerType === 'touch') return;
+      event.preventDefault();
+      event.stopPropagation();
+      const wasOpen = openSymbolPicker === trigger;
+      if (wasOpen) closeSymbolPicker();
+      else showSymbolPicker(trigger);
+      pointerClickTrigger = trigger;
+      if (!wasOpen) symbolPointer = { pointerId: event.pointerId, trigger };
+    });
+    symbolMenu.addEventListener('pointerdown', event => {
+      if (!openSymbolPicker || event.button !== 0 || event.pointerType === 'touch') return;
+      if (event.target.closest('[data-symbol-value]')) {
+        event.preventDefault();
+        symbolPointer = { pointerId: event.pointerId, trigger: openSymbolPicker };
+      }
+    });
+    symbolMenu.addEventListener('pointermove', event => {
+      if (!openSymbolPicker || event.pointerType === 'touch') return;
+      const item = event.target.closest('[data-symbol-value]');
+      if (item) highlightSymbol(symbolValues.indexOf(item.dataset.symbolValue));
+    });
+    symbolMenu.addEventListener('click', event => {
+      const item = event.target.closest('[data-symbol-value]');
+      if (!item) return;
+      event.preventDefault();
+      event.stopPropagation();
+      chooseSymbol(item.dataset.symbolValue);
+    });
+    // Hit testing also works when the browser captures the pressed pointer.
+    const symbolHit = event => document.elementFromPoint(event.clientX, event.clientY) || event.target;
+    const symbolUnderPointer = event => symbolHit(event)?.closest?.('[data-symbol-value]');
+    document.addEventListener('pointermove', event => {
+      if (!symbolPointer || event.pointerId !== symbolPointer.pointerId) return;
+      const item = symbolUnderPointer(event);
+      if (item && symbolMenu.contains(item)) highlightSymbol(symbolValues.indexOf(item.dataset.symbolValue));
+    }, true);
+    document.addEventListener('pointerup', event => {
+      if (!symbolPointer || event.pointerId !== symbolPointer.pointerId) return;
+      const gesture = symbolPointer;
+      symbolPointer = null;
+      const item = symbolUnderPointer(event);
+      if (item && symbolMenu.contains(item)) {
+        event.preventDefault();
+        chooseSymbol(item.dataset.symbolValue);
+      } else if (!gesture.trigger.contains(symbolHit(event))) closeSymbolPicker(true);
+    }, true);
+    document.addEventListener('pointercancel', event => {
+      if (!symbolPointer || event.pointerId !== symbolPointer.pointerId) return;
+      pointerClickTrigger = null;
+      closeSymbolPicker(true);
+    }, true);
+    document.addEventListener('pointerdown', event => {
+      if (openSymbolPicker && !openSymbolPicker.contains(event.target) && !symbolMenu.contains(event.target)) closeSymbolPicker();
+    }, true);
+    document.addEventListener('keydown', event => {
+      const trigger = event.target.closest?.('.symbolPickerTrigger');
+      if (event.key === 'Escape' && openSymbolPicker) {
+        event.preventDefault(); event.stopImmediatePropagation(); closeSymbolPicker(true); return;
+      }
+      if (event.key === 'Tab') { closeSymbolPicker(); return; }
+      if (!trigger || trigger.disabled || event.ctrlKey || event.metaKey || event.altKey || event.isComposing) return;
+      if (['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) {
+        event.preventDefault();
+        if (openSymbolPicker !== trigger) { showSymbolPicker(trigger); return; }
+        highlightSymbol(event.key === 'Home' ? 0 : event.key === 'End' ? symbolValues.length - 1
+          : activeSymbolIndex + (event.key === 'ArrowDown' ? 1 : -1));
+      } else if (['Enter', ' '].includes(event.key)) {
+        event.preventDefault();
+        if (openSymbolPicker === trigger) chooseSymbol(symbolValues[activeSymbolIndex]);
+        else showSymbolPicker(trigger);
+      } else if (event.key.length === 1) {
+        event.preventDefault();
+        const index = symbolValues.findIndex(value => app.symbols[value].toLowerCase().startsWith(event.key.toLowerCase()));
+        if (index < 0) return;
+        if (openSymbolPicker === trigger) highlightSymbol(index);
+        else chooseSymbol(symbolValues[index], trigger);
+      }
+    }, true);
+    window.addEventListener('resize', positionSymbolMenu);
+    window.addEventListener('scroll', positionSymbolMenu, true);
+
     function fitPreview() {
       const container = get('headContainer');
       if (!container) { stage.style.paddingBottom = '0px'; stage.style.paddingLeft = '0px'; return; }
@@ -175,6 +353,27 @@
 
     function updateOptions(head) {
       if (!head) return;
+      form.querySelectorAll('[data-head-choice]').forEach(button => {
+        const field = button.dataset.headChoice;
+        const value = field === 'layout' ? head.hawk ? 'hawk' : head.cluster ? 'cluster' : 'linear' : head[field];
+        const selected = button.dataset.value === value;
+        button.classList.toggle('selected', selected);
+        button.setAttribute('aria-pressed', String(selected));
+        button.disabled = field === 'orientation' && (head.cluster || head.hawk);
+      });
+      for (const [id, field] of [['headBackplateMargin', 'backplateMargin'], ['headReflectiveWidth', 'reflectiveWidth']]) {
+        if (document.activeElement !== get(id)) get(id).value = head[field];
+        get(`${id}Value`).value = head[field];
+      }
+      // Refresh mounted controls too, so an old disabled state cannot linger.
+      head.indications.forEach(section => {
+        const color = get(`color-${section.id}`);
+        if (!color) return;
+        const markup = options(app.indicationColors(section.symbol), section.color);
+        if (color.innerHTML !== markup) color.innerHTML = markup;
+        color.disabled = head.hawk === true;
+        color.value = section.color;
+      });
       get('backplateOptions').hidden = head.backplate === 'none';
       get('reflectiveOptions').hidden = head.backplate !== 'reflective';
       get('fullBackplateOptions').hidden = !head.hawk && head.indications.length !== 5;
@@ -194,6 +393,7 @@
     }
 
     function renderEditor(head) {
+      closeSymbolPicker();
       form.hidden = !head;
       get('headEditorEmpty').hidden = Boolean(head);
       if (!head) { get('indicationList').replaceChildren(); return; }
@@ -205,19 +405,21 @@
       });
       get('addIndication').disabled = head.cluster || head.hawk || head.indications.length >= 5;
       get('addIndication').title = head.hawk ? 'HAWK beacons have three indications'
-        : head.cluster ? 'Clusters always have five indications' : 'Up to five indications per head';
-      get('headOrientation').disabled = head.cluster || head.hawk;
+        : head.cluster ? '5 section clusters always have five indications' : 'Up to five indications per head';
       const positions = head.hawk ? ['Upper left', 'Upper right', 'Bottom']
         : ['Top', 'Upper left', 'Upper right', 'Lower left', 'Lower right'];
       indicationList.innerHTML = head.indications.map((section, index) => `<fieldset class="aplArrowEditorBlock" data-indication-id="${section.id}">
         <legend>Indication ${index + 1}${head.cluster || head.hawk ? ` - ${positions[index]}` : ''}</legend>
         <div class="aplArrowListItem">
           <button id="move-${section.id}" type="button" class="aplArrowDragHandle" draggable="${!head.hawk}" ${head.hawk ? 'disabled' : ''} aria-label="Move indication ${index + 1}" aria-keyshortcuts="ArrowUp ArrowDown" title="Drag to reorder; arrow keys also move this indication">Move</button>
-          <select id="symbol-${section.id}" data-indication-field="symbol" ${head.hawk ? 'disabled' : ''} aria-label="Indication ${index + 1} symbol">${options(app.symbols, section.symbol)}</select>
+          <div class="symbolPicker">
+            <select id="symbol-${section.id}" data-indication-field="symbol" hidden ${head.hawk ? 'disabled' : ''} aria-label="Indication ${index + 1} symbol">${options(app.symbols, section.symbol)}</select>
+            <button id="symbol-trigger-${section.id}" type="button" class="symbolPickerTrigger" role="combobox" aria-haspopup="listbox" aria-controls="signalSymbolMenu" aria-expanded="false" aria-label="Indication ${index + 1} symbol: ${app.escape(app.symbols[section.symbol])}" data-symbol-select="symbol-${section.id}" ${head.hawk ? 'disabled' : ''}>${symbolLabel(section.symbol)}<svg class="symbolPickerCaret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.25 9.25l4.75 4.75 4.75-4.75"/></svg></button>
+          </div>
           <select id="size-${section.id}" data-indication-field="size" aria-label="Indication ${index + 1} lens size">${options({ 8: '8 in', 12: '12 in' }, section.size)}</select>
           <button type="button" class="aplArrowDeleteButton" data-indication-action="remove" ${head.cluster || head.hawk || head.indications.length === 1 ? 'disabled' : ''} aria-label="Delete indication ${index + 1}">Delete</button>
         </div>
-        <div class="fieldRow"><label for="color-${section.id}">Color:</label><select id="color-${section.id}" data-indication-field="color" ${head.hawk || app.isBusSymbol(section.symbol) ? 'disabled' : ''}>${options(app.isBusSymbol(section.symbol) ? { white: 'White' } : { red: 'Red', yellow: 'Yellow', green: 'Green' }, section.color)}</select></div>
+        <div class="fieldRow"><label for="color-${section.id}">Color:</label><select id="color-${section.id}" data-indication-field="color" ${head.hawk ? 'disabled' : ''}>${options(app.indicationColors(section.symbol), section.color)}</select></div>
       </fieldset>`).join('');
       updateOptions(head);
     }
@@ -411,6 +613,24 @@
       const head = selectedHead();
       if (head) { head.name = event.target.value; refresh(false); }
     });
+    form.addEventListener('click', event => {
+      const button = event.target.closest('[data-head-choice]');
+      const head = selectedHead();
+      if (!button || button.disabled || !head) return;
+      const field = button.dataset.headChoice;
+      if (field === 'layout') app.setHeadLayout(head, button.dataset.value);
+      else if (field === 'orientation') head.orientation = head.cluster || head.hawk ? 'vertical' : button.dataset.value;
+      else head.backplateCorners = button.dataset.value;
+      refresh();
+    });
+    form.addEventListener('input', event => {
+      const input = event.target;
+      const field = input.dataset.headField;
+      const head = selectedHead();
+      if (!head || !['backplateMargin', 'reflectiveWidth'].includes(field)) return;
+      head[field] = field === 'backplateMargin' ? app.normalizePlateMargin(input.valueAsNumber) : app.normalizeReflectiveWidth(input.valueAsNumber);
+      refresh(false);
+    });
     form.addEventListener('change', event => {
       const head = selectedHead();
       if (!head) return;
@@ -420,16 +640,24 @@
       if (field) {
         if (field === 'layout') app.setHeadLayout(head, value);
         else if (field === 'orientation') head.orientation = head.cluster || head.hawk ? 'vertical' : value;
-        else head[field] = ['backplateMargin', 'reflectiveWidth'].includes(field) ? Number(value) : value;
+        else if (field === 'backplateMargin') head[field] = app.normalizePlateMargin(Number(value));
+        else if (field === 'reflectiveWidth') head[field] = app.normalizeReflectiveWidth(Number(value));
+        else head[field] = value;
       } else if (input.dataset.indicationField) {
         if (head.hawk && input.dataset.indicationField !== 'size') return;
         const section = head.indications.find(section => section.id === input.closest('[data-indication-id]').dataset.indicationId);
-        if (input.dataset.indicationField === 'symbol') app.setIndicationSymbol(section, value);
-        else if (input.dataset.indicationField !== 'color' || !app.isBusSymbol(section.symbol)) {
+        if (input.dataset.indicationField === 'symbol') {
+          app.setIndicationSymbol(section, value);
+          const trigger = get(`symbol-trigger-${section.id}`);
+          trigger.querySelector('.symbolPickerIcon').innerHTML = app.renderSymbolIcon(value);
+          trigger.querySelector('.symbolPickerLabel').textContent = app.symbols[value];
+          trigger.setAttribute('aria-label', `Indication ${head.indications.indexOf(section) + 1} symbol: ${app.symbols[value]}`);
+        }
+        else {
           section[input.dataset.indicationField] = input.dataset.indicationField === 'size' ? Number(value) : value;
         }
       }
-      refresh();
+      refresh(input.dataset.indicationField !== 'symbol' && !['backplateMargin', 'reflectiveWidth'].includes(field));
     });
     get('addIndication').addEventListener('click', () => {
       const head = selectedHead();

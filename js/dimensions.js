@@ -45,5 +45,6 @@ window.SignalMaker = {
     'u-turn': 'U-turn arrow', bicycle: 'Bicycle',
     'bus-stop': 'Bus stop', 'bus-straight': 'Bus go straight',
     'bus-left': 'Bus go left', 'bus-right': 'Bus go right',
+    triangle: 'Triangle',
   },
 };

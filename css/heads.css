@@ -66,7 +66,7 @@
 .dragGhost { position: fixed; margin: 0; z-index: 10; pointer-events: none; opacity: 0.8; }
 .dragGhost:has(.aplArrowListItem) { background: var(--hotbarColor); }
 .modals { z-index: 1; }
-#headEditor { width: 24rem; }
+#headEditor { width: 24rem; --head-control-height: 1.4rem; }
 .editorContent { max-height: calc(100dvh - 8rem); }
 
 input, select {
@@ -88,6 +88,24 @@ input:focus-visible, select:focus-visible, button:focus-visible { outline: 2px s
 label { font-size: 0.75rem; }
 .fieldRow { display: flex; align-items: center; gap: 0.4rem; margin: 0.35rem 0; }
 .fieldRow > label { flex: 0 0 8.5rem; text-align: right; }
+.fieldRow > .fieldLabel { flex: 0 0 8.5rem; text-align: right; font-size: 0.75rem; }
+/* SignMaker's square choice-button groups and selected backgrounds. */
+#headForm > .fieldRow > label,
+#headForm > .fieldRow > .fieldLabel,
+#backplateOptions > .fieldRow > label,
+#backplateOptions > .fieldRow > .fieldLabel { flex-basis: 6rem; }
+#headForm > .fieldRow > select { height: var(--head-control-height); }
+.headChoiceButtons { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); flex: 1 1 0; align-items: stretch; gap: 0.12rem; min-width: 0; }
+.editorContent .headChoiceButtons button { width: 100%; min-width: 0; height: var(--head-control-height); min-height: 0; padding: 0 0.25rem; line-height: 1; white-space: nowrap; }
+.headChoiceButtons button.selected { background: var(--selectedColor); }
+.headSliderValue { flex: 0 0 1.4rem; text-align: right; font-size: 0.7rem; font-variant-numeric: tabular-nums; }
+@media (max-width: 480px) {
+  #headForm > .fieldRow > label,
+  #headForm > .fieldRow > .fieldLabel,
+  #backplateOptions > .fieldRow > label,
+  #backplateOptions > .fieldRow > .fieldLabel { flex-basis: 24%; }
+  #headLayout button { font-size: clamp(0.5rem, 3.2vw, 0.7rem); padding-inline: 0.1rem; }
+}
 .fieldRow > input:not([type="checkbox"]), .fieldRow > select { flex: 1; width: 100%; }
 .editorContent button, .headsMenu button, .previewEmpty button { padding: 0.25rem 0.4rem; font-size: 0.7rem; }
 .editorContent button:hover, .headsMenu button:enabled:hover, .previewEmpty button:hover { background: var(--selectedColor); }
@@ -100,7 +118,7 @@ legend { padding: 0 0.25rem; }
 .aplArrowEditorBlock { position: relative; }
 .aplArrowListItem {
   display: grid;
-  grid-template-columns: 3rem minmax(0, 1fr) 3rem 4.5rem;
+  grid-template-columns: 3rem minmax(0, 1fr) 3.75rem 4.5rem;
   gap: 0.45rem;
   align-items: center;
   width: 100%;
