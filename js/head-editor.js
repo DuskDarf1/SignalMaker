@@ -35,8 +35,8 @@
     const symbolLabel = value => `<span class="symbolPickerIcon">${app.renderSymbolIcon(value)}</span><span class="symbolPickerLabel">${app.escape(app.symbols[value])}</span>`;
     let openSymbolPicker = null;
     let activeSymbolIndex = 0;
-    let symbolSearch = '';
-    let symbolSearchTime = 0;
+    let symbolPointer = null;
+    let pointerClickTrigger = null;
 
     function closeSymbolPicker(restoreFocus = false) {
       const trigger = openSymbolPicker;
@@ -47,6 +47,7 @@
       symbolMenu.setAttribute('aria-hidden', 'true');
       symbolMenu.inert = true;
       openSymbolPicker = null;
+      symbolPointer = null;
       if (restoreFocus && trigger?.isConnected) trigger.focus({ preventScroll: true });
     }
 
@@ -55,7 +56,7 @@
       if (!openSymbolPicker.isConnected || !openSymbolPicker.getClientRects().length) { closeSymbolPicker(); return; }
       const rect = openSymbolPicker.getBoundingClientRect();
       const edge = 8, gap = 3;
-      const width = Math.min(Math.max(rect.width, 220), window.innerWidth - edge * 2);
+      const width = Math.min(Math.max(rect.width, 180), window.innerWidth - edge * 2);
       const below = Math.max(0, window.innerHeight - rect.bottom - edge - gap);
       const above = Math.max(0, rect.top - edge - gap);
       const upwards = below < Math.min(symbolMenu.scrollHeight, 320) && above > below;
@@ -84,7 +85,6 @@
       if (trigger.disabled) return;
       const select = get(trigger.dataset.symbolSelect);
       openSymbolPicker = trigger;
-      symbolSearch = '';
       symbolMenu.innerHTML = symbolValues.map((value, index) => `<button type="button" id="signal-symbol-option-${index}" class="symbolPickerItem${select.value === value ? ' selected' : ''}" role="option" aria-selected="${select.value === value}" tabindex="-1" data-symbol-value="${value}">${symbolLabel(value)}<span class="symbolPickerCheck" aria-hidden="true">${select.value === value ? '✓' : ''}</span></button>`).join('');
       trigger.closest('.symbolPicker').classList.add('open');
       trigger.setAttribute('aria-expanded', 'true');
@@ -98,9 +98,9 @@
       trigger.focus({ preventScroll: true });
     }
 
-    function chooseSymbol(value) {
-      if (!openSymbolPicker || !Object.hasOwn(app.symbols, value)) return;
-      const select = get(openSymbolPicker.dataset.symbolSelect);
+    function chooseSymbol(value, trigger = openSymbolPicker) {
+      if (!trigger || trigger.disabled || !Object.hasOwn(app.symbols, value)) return;
+      const select = get(trigger.dataset.symbolSelect);
       closeSymbolPicker(true);
       if (select.value === value) return;
       select.value = value;
@@ -112,11 +112,33 @@
       if (!trigger) return;
       event.preventDefault();
       event.stopPropagation();
+      if (pointerClickTrigger === trigger && event.detail !== 0) { pointerClickTrigger = null; return; }
+      pointerClickTrigger = null;
       if (openSymbolPicker === trigger) closeSymbolPicker();
       else showSymbolPicker(trigger);
     });
+    indicationList.addEventListener('pointerdown', event => {
+      const trigger = event.target.closest('.symbolPickerTrigger');
+      if (!trigger || trigger.disabled || event.button !== 0 || event.pointerType === 'touch') return;
+      event.preventDefault();
+      event.stopPropagation();
+      const wasOpen = openSymbolPicker === trigger;
+      if (wasOpen) closeSymbolPicker();
+      else showSymbolPicker(trigger);
+      pointerClickTrigger = trigger;
+      if (!wasOpen) symbolPointer = { pointerId: event.pointerId, trigger };
+    });
     symbolMenu.addEventListener('pointerdown', event => {
-      if (event.target.closest('[data-symbol-value]')) event.preventDefault();
+      if (!openSymbolPicker || event.button !== 0 || event.pointerType === 'touch') return;
+      if (event.target.closest('[data-symbol-value]')) {
+        event.preventDefault();
+        symbolPointer = { pointerId: event.pointerId, trigger: openSymbolPicker };
+      }
+    });
+    symbolMenu.addEventListener('pointermove', event => {
+      if (!openSymbolPicker || event.pointerType === 'touch') return;
+      const item = event.target.closest('[data-symbol-value]');
+      if (item) highlightSymbol(symbolValues.indexOf(item.dataset.symbolValue));
     });
     symbolMenu.addEventListener('click', event => {
       const item = event.target.closest('[data-symbol-value]');
@@ -125,6 +147,29 @@
       event.stopPropagation();
       chooseSymbol(item.dataset.symbolValue);
     });
+    // Hit testing also works when the browser captures the pressed pointer.
+    const symbolHit = event => document.elementFromPoint(event.clientX, event.clientY) || event.target;
+    const symbolUnderPointer = event => symbolHit(event)?.closest?.('[data-symbol-value]');
+    document.addEventListener('pointermove', event => {
+      if (!symbolPointer || event.pointerId !== symbolPointer.pointerId) return;
+      const item = symbolUnderPointer(event);
+      if (item && symbolMenu.contains(item)) highlightSymbol(symbolValues.indexOf(item.dataset.symbolValue));
+    }, true);
+    document.addEventListener('pointerup', event => {
+      if (!symbolPointer || event.pointerId !== symbolPointer.pointerId) return;
+      const gesture = symbolPointer;
+      symbolPointer = null;
+      const item = symbolUnderPointer(event);
+      if (item && symbolMenu.contains(item)) {
+        event.preventDefault();
+        chooseSymbol(item.dataset.symbolValue);
+      } else if (!gesture.trigger.contains(symbolHit(event))) closeSymbolPicker(true);
+    }, true);
+    document.addEventListener('pointercancel', event => {
+      if (!symbolPointer || event.pointerId !== symbolPointer.pointerId) return;
+      pointerClickTrigger = null;
+      closeSymbolPicker(true);
+    }, true);
     document.addEventListener('pointerdown', event => {
       if (openSymbolPicker && !openSymbolPicker.contains(event.target) && !symbolMenu.contains(event.target)) closeSymbolPicker();
     }, true);
@@ -146,15 +191,10 @@
         else showSymbolPicker(trigger);
       } else if (event.key.length === 1) {
         event.preventDefault();
-        if (openSymbolPicker !== trigger) showSymbolPicker(trigger);
-        const now = Date.now();
-        symbolSearch = now - symbolSearchTime < 650 ? symbolSearch + event.key.toLowerCase() : event.key.toLowerCase();
-        symbolSearchTime = now;
-        const prefix = [...symbolSearch].every(letter => letter === symbolSearch[0]) ? symbolSearch[0] : symbolSearch;
-        for (let offset = 1; offset <= symbolValues.length; offset++) {
-          const index = (activeSymbolIndex + offset) % symbolValues.length;
-          if (app.symbols[symbolValues[index]].toLowerCase().startsWith(prefix)) { highlightSymbol(index); break; }
-        }
+        const index = symbolValues.findIndex(value => app.symbols[value].toLowerCase().startsWith(event.key.toLowerCase()));
+        if (index < 0) return;
+        if (openSymbolPicker === trigger) highlightSymbol(index);
+        else chooseSymbol(symbolValues[index], trigger);
       }
     }, true);
     window.addEventListener('resize', positionSymbolMenu);

@@ -63,6 +63,10 @@
 
    function setHeadLayout(head, layout) {
      if (layout === 'hawk') return setHawk(head, true);
+     if (layout === 'linear' && (head.cluster || head.hawk)) {
+       head.indications = ['red', 'yellow', 'green'].map(color => indication(color));
+       head.orientation = 'vertical';
+     }
      setHawk(head, false);
      setCluster(head, layout === 'cluster');
    }
