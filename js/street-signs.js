@@ -17,9 +17,11 @@
   const number = (value, min, max, fallback) => Number.isFinite(value) ? Math.max(min, Math.min(max, value)) : fallback;
   const choice = (value, choices, fallback) => choices.includes(value) ? value : fallback;
   const regulatoryById = new Map((app.regulatoryCatalog ?? []).map(entry => [entry.id, entry]));
-  const regulatoryDesign = sign => regulatoryById.get(sign.regulatoryCode);
+  const regulatoryDesign = sign => sign.regulatoryImage
+    ? { code: 'Custom', name: sign.regulatoryImage.name, width: sign.regulatoryImage.width, height: sign.regulatoryImage.height }
+    : regulatoryById.get(sign.regulatoryCode);
   const isRegulatorySign = sign => Boolean(regulatoryDesign(sign));
-  const canBlankOut = sign => Boolean(app.regulatoryBlankoutData?.[sign.regulatoryCode]);
+  const canBlankOut = sign => !sign.regulatoryImage && Boolean(app.regulatoryBlankoutData?.[sign.regulatoryCode]);
   const isBlankOut = sign => sign.signType === 'blank-out' && canBlankOut(sign);
   const signCanMove = (sign, support) => support.type === 'mast-arm' || support.type === 'span-wire' && isRegulatorySign(sign);
   const signPositionKey = (sign, support) => support.type === 'span-wire' && isRegulatorySign(sign) ? 'spanPosition' : 'armPosition';
@@ -42,10 +44,24 @@
     return { src: icon.src, width: icon.width, height: icon.height,
       name: typeof icon.name === 'string' ? icon.name.slice(0, 160) : 'Uploaded icon' };
   }
+  function restoreRegulatoryImage(image) {
+    const artwork = restoreStreetIcon(image && { ...image, width: image.pixelWidth ?? image.width, height: image.pixelHeight ?? image.height });
+    if (!artwork) return null;
+    // Uploaded artwork defaults to a schematic 36-inch longest edge. The existing
+    // Size slider scales both dimensions together; PNG pixels stay independent.
+    const scale = 36 / Math.max(artwork.width, artwork.height);
+    return { ...artwork, pixelWidth: artwork.width, pixelHeight: artwork.height,
+      width: artwork.width * scale, height: artwork.height * scale };
+  }
   function restoreStreetSigns(project, saved) {
     project.streetSigns = (Array.isArray(saved.streetSigns) ? saved.streetSigns : []).filter(sign => sign && typeof sign === 'object').slice(0, 100).map(raw => {
       const sign = createStreetSign(typeof raw.name === 'string' ? raw.name.slice(0, 80) : 'Street Sign');
-      if (typeof raw.regulatoryCode === 'string') {
+      if (raw.regulatoryImage) {
+        sign.regulatoryImage = restoreRegulatoryImage(raw.regulatoryImage);
+        if (!sign.regulatoryImage) return null;
+        sign.regulatoryScale = number(raw.regulatoryScale, 0.25, 4, 1);
+        sign.signType = 'static';
+      } else if (typeof raw.regulatoryCode === 'string') {
         if (!regulatoryById.has(raw.regulatoryCode)) return null;
         sign.regulatoryCode = raw.regulatoryCode;
         sign.regulatoryScale = number(raw.regulatoryScale, 0.25, 4, 1);
@@ -175,7 +191,7 @@
         return `<rect class="blankoutHousing" width="${width}" height="${height}" fill="#24272b"/><rect x="0.5" y="0.5" width="${width - 1}" height="${height - 1}" fill="#000"/>`
           + (sign.display === 'off' ? '' : `<image class="regulatorySignFace blankoutFace" x="1" y="1" width="${width - 2}" height="${height - 2}" href="${app.regulatoryBlankoutData[sign.regulatoryCode]}" preserveAspectRatio="xMidYMid meet"><title>${esc(geometry.regulatory.name)}</title></image>`);
       }
-      return `<image class="regulatorySignFace" width="${geometry.width}" height="${geometry.height}" href="${app.regulatoryPNGData[sign.regulatoryCode]}" preserveAspectRatio="xMidYMid meet"><title>${esc(geometry.regulatory.code + ' — ' + geometry.regulatory.name)}</title></image>`;
+      return `<image class="regulatorySignFace" width="${geometry.width}" height="${geometry.height}" href="${esc(sign.regulatoryImage?.src ?? app.regulatoryPNGData[sign.regulatoryCode])}" preserveAspectRatio="xMidYMid meet"><title>${esc(geometry.regulatory.code + ' — ' + geometry.regulatory.name)}</title></image>`;
     }
     const radius = sign.corner === 'Round' ? Math.min(sign.borderRadius * 6, geometry.height / 2, geometry.width / 2) : 0;
     const foreground = contrast(sign.color);
@@ -228,5 +244,5 @@
   }
   Object.assign(app, { streetPalette: palette, streetFonts: fonts, streetFontFiles: fontFiles, createStreetText, createStreetSign,
     regulatoryDesign, isRegulatorySign, canBlankOut, isBlankOut, signCanMove, streetSignPosition,
-    restoreStreetSigns, streetFont, streetSignGeometry, streetSignBounds, setStreetSignPosition, ensureStreetSignPositions, streetSignMarkup, embedStreetSignFonts });
+    restoreRegulatoryImage, restoreStreetSigns, streetFont, streetSignGeometry, streetSignBounds, setStreetSignPosition, ensureStreetSignPositions, streetSignMarkup, embedStreetSignFonts });
 })();

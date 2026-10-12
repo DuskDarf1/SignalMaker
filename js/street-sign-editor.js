@@ -67,6 +67,7 @@
       get(id).append(get('signEditorContent'));
       get('addStreetSign').textContent = regulatoryMode ? 'Add Regulatory Sign' : 'Add Sign';
       get('blankoutSignActions').hidden = !regulatoryMode;
+      get('regulatoryUploadStatus').hidden = !regulatoryMode;
       get('addStreetSign').dataset.streetAction = regulatoryMode ? 'add-regulatory' : 'add';
       get('streetSignsEmpty').textContent = regulatoryMode ? 'No regulatory signs yet.' : 'No street signs yet.';
       app.refresh(false);
@@ -76,7 +77,7 @@
     const numeric = (id, label, field, value, max, step) => `<div class="fieldRow"><label for="${id}">${label}</label><input type="number" id="${id}" data-street-field="${field}" value="${value}" min="0" max="${max}" step="${step}" /></div>`;
     form.innerHTML = `<div class="fieldRow"><label for="streetSignName">Name:</label><input id="streetSignName" data-street-field="name" maxlength="80" /></div>
       <div id="regulatorySignOptions" hidden>
-        <div class="fieldRow"><label for="regulatorySignChoose">MUTCD Sign:</label><button type="button" id="regulatorySignChoose" aria-haspopup="dialog" aria-controls="regulatorySignPicker">Choose Sign...</button></div>
+        <div class="fieldRow"><label for="regulatorySignChoose">Sign:</label><button type="button" id="regulatorySignChoose" aria-haspopup="dialog" aria-controls="regulatorySignPicker">Choose Sign...</button></div>
         <p id="regulatorySignCurrent">Current: None</p>
         <div class="fieldRow"><label for="regulatorySignSize">Size:</label><input type="range" id="regulatorySignSize" min="25" max="400" step="1" value="100" aria-label="Regulatory sign size" /></div>
         ${select('regulatorySignType', 'Sign Type:', 'signType', [['static', 'Static'], ['blank-out', 'Blank-out']])}
@@ -144,7 +145,9 @@
     let pickerSignId = null;
     function regulatoryOptions() {
       const query = get('regulatorySignSearch').value.trim().toLowerCase().replace(/\bpeds\b/g, 'pedestrians');
-      const matches = (app.regulatoryCatalog ?? []).filter(entry => (!app.isBlankOut(selected() ?? {}) || app.canBlankOut({ regulatoryCode: entry.id })) && `${entry.code} ${entry.name}`.toLowerCase().includes(query));
+      const custom = [...new Map(project.streetSigns.filter(sign => sign.regulatoryImage).map(sign =>
+        [sign.regulatoryImage.src, { id: `custom-${sign.id}`, ...app.regulatoryDesign(sign), image: sign.regulatoryImage }])).values()];
+      const matches = [...(app.regulatoryCatalog ?? []), ...custom].filter(entry => (!app.isBlankOut(selected() ?? {}) || app.canBlankOut({ regulatoryCode: entry.id })) && `${entry.code} ${entry.name}`.toLowerCase().includes(query));
       signGrid.replaceChildren();
       for (const entry of matches) {
         const item = document.createElement('button');
@@ -154,17 +157,24 @@
         const name = app.isBlankOut(selected() ?? {}) ? app.regulatoryBlankoutLabels[entry.id] : entry.name;
         const label = `${entry.code} — ${name}`;
         item.setAttribute('aria-label', label);
-        item.setAttribute('aria-pressed', String(entry.id === selected()?.regulatoryCode));
+        item.setAttribute('aria-pressed', String(entry.image ? entry.image.src === selected()?.regulatoryImage?.src : !selected()?.regulatoryImage && entry.id === selected()?.regulatoryCode));
         item.title = label;
         const img = document.createElement('img');
-        img.src = app.isBlankOut(selected() ?? {}) ? app.regulatoryBlankoutData[entry.id] : app.regulatoryPNGData[entry.id];
+        img.src = app.isBlankOut(selected() ?? {}) ? app.regulatoryBlankoutData[entry.id] : entry.image?.src ?? app.regulatoryPNGData[entry.id];
         img.loading = 'lazy';
         img.alt = '';
         item.append(img);
         item.addEventListener('click', () => {
           const sign = project.streetSigns.find(sign => sign.id === pickerSignId);
           if (sign && app.isRegulatorySign(sign)) {
-            sign.regulatoryCode = entry.id;
+            if (entry.image) {
+              sign.regulatoryImage = structuredClone(entry.image);
+              delete sign.regulatoryCode;
+              sign.signType = 'static';
+            } else {
+              sign.regulatoryCode = entry.id;
+              delete sign.regulatoryImage;
+            }
             app.refresh(false);
           }
           picker.close();
@@ -178,6 +188,7 @@
       pickerSignId = selected().id;
       get('regulatorySignPickerTitle').textContent = app.isBlankOut(selected()) ? 'Select a Blank-out Sign' : 'Select a Regulatory Sign';
       get('regulatorySignSearch').value = '';
+      get('uploadRegulatorySignPicker').hidden = app.isBlankOut(selected());
       regulatoryOptions();
       signGrid.scrollTop = 0;
       picker.showModal();
@@ -286,6 +297,75 @@
       sign.selectedTextIndex = Number(event.target.value);
       app.refresh(false);
       refreshEditor(true);
+    });
+    // Reuse the native file-input/image-decoding upload convention (GPL-3.0).
+    // Rasterize to a transparent PNG so preview, local restoration and export
+    // use identical artwork, without external resources or uploaded markup.
+    let regulatoryUploadTarget = null;
+    let regulatoryUploadRequest = 0;
+    const uploadStatus = message => {
+      get('regulatoryUploadStatus').textContent = message;
+      if (picker.open) get('regulatorySearchStatus').textContent = message;
+    };
+    get('uploadRegulatorySign').addEventListener('click', () => {
+      regulatoryUploadTarget = null;
+      get('regulatorySignFile').click();
+    });
+    get('uploadRegulatorySignPicker').addEventListener('click', () => {
+      regulatoryUploadTarget = pickerSignId;
+      get('regulatorySignFile').click();
+    });
+    get('regulatorySignFile').addEventListener('change', async event => {
+      const file = event.target.files[0];
+      event.target.value = '';
+      if (!file) return;
+      const targetId = regulatoryUploadTarget;
+      const request = ++regulatoryUploadRequest;
+      uploadStatus('Loading sign…');
+      if (file.size > 20 * 1024 * 1024) { uploadStatus('Choose an image smaller than 20 MB.'); return; }
+      const url = URL.createObjectURL(file);
+      try {
+        const image = new Image();
+        image.src = url;
+        await image.decode();
+        if (!image.naturalWidth || !image.naturalHeight) throw new Error('Empty image');
+        const canvas = document.createElement('canvas');
+        let scale = Math.min(1, 1024 / Math.max(image.naturalWidth, image.naturalHeight));
+        let src;
+        do {
+          canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+          canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+          canvas.getContext('2d').drawImage(image, 0, 0, canvas.width, canvas.height);
+          src = canvas.toDataURL('image/png');
+          scale *= 0.75;
+        } while (src.length > 512 * 1024 && Math.max(canvas.width, canvas.height) > 1);
+        const artwork = app.restoreRegulatoryImage({ src, width: canvas.width, height: canvas.height, name: file.name });
+        if (!artwork) throw new Error('Invalid image');
+        if (request !== regulatoryUploadRequest) return;
+        const target = targetId ? project.streetSigns.find(sign => sign.id === targetId) : null;
+        if (targetId && !target) { uploadStatus('The sign was removed before the upload finished.'); return; }
+        app.runWithUndo(() => {
+          const sign = target ?? app.createStreetSign(nextName(true));
+          sign.regulatoryImage = artwork;
+          delete sign.regulatoryCode;
+          sign.signType = 'static';
+          if (!target) { sign.mounting = 'direct'; project.streetSigns.push(sign); }
+          project.selectedStreetSignId = sign.id;
+          app.ensureStreetSignPositions(project);
+          if (picker.open) picker.close();
+          showEditor('regulatorySignsEditor');
+          app.refresh(false);
+          flash(sign.id);
+        });
+        try {
+          localStorage.setItem('signalmaker-project-v1', JSON.stringify(project));
+          uploadStatus('Sign uploaded and saved locally.');
+        } catch {
+          uploadStatus('Sign uploaded. Browser storage is unavailable or full; it will not survive a reload.');
+        }
+      } catch {
+        if (request === regulatoryUploadRequest) uploadStatus('Could not read that image. Try another image file.');
+      } finally { URL.revokeObjectURL(url); }
     });
     get('uploadStreetSignIcon').addEventListener('click', () => get('streetSignIconFile').click());
     get('removeStreetSignIcon').addEventListener('click', () => {

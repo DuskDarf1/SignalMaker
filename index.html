@@ -101,7 +101,9 @@
       <div class="editorBar"><h2 id="streetSignsTitle" class="editorTitle" tabindex="-1"><span class="material-symbols-outlined" aria-hidden="true">signpost</span>Street Signs</h2></div>
       <div class="editorContent" id="signEditorContent">
         <div class="headActions"><button id="addStreetSign" type="button" data-street-action="add">Add Sign</button><button id="duplicateStreetSign" type="button" data-street-action="duplicate">Duplicate</button><button id="removeStreetSign" type="button" data-street-action="remove">Remove</button></div>
-        <div class="headActions" id="blankoutSignActions" hidden><button type="button" data-street-action="add-blankout">Add Blank-out Sign</button></div>
+        <div class="headActions" id="blankoutSignActions" hidden><button type="button" data-street-action="add-blankout">Add Blank-out Sign</button><button type="button" id="uploadRegulatorySign">Upload Sign</button></div>
+        <input id="regulatorySignFile" type="file" accept="image/*,.svg" aria-label="Upload regulatory sign image" hidden />
+        <p id="regulatoryUploadStatus" role="status" aria-live="polite" hidden></p>
         <div class="fieldRow"><label for="streetSignSelection">Sign:</label><select id="streetSignSelection"></select></div>
         <p id="streetSignsEmpty">No signs yet. Add a street sign or a regulatory sign.</p>
         <form id="streetSignForm" hidden></form>
@@ -230,7 +232,7 @@
     <input type="text" id="regulatorySignSearch" placeholder="Search signs..." aria-label="Search regulatory signs by code or name" />
     <div id="regulatorySignGrid" class="iconGrid" role="group" aria-label="Regulatory signs"></div>
     <p id="regulatorySearchStatus" role="status"></p>
-    <div class="options"><button type="button" id="closeRegulatorySignPicker">OK</button></div>
+    <div class="options"><button type="button" id="uploadRegulatorySignPicker">Upload Sign</button><button type="button" id="closeRegulatorySignPicker">OK</button></div>
   </dialog>
   <menu id="copyHeadContextMenu" class="copyPanelContextMenu" aria-label="Copy one signal head" role="menu" hidden></menu>
   <p id="actionStatus" role="status" aria-live="polite"></p>
