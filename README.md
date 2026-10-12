@@ -18,6 +18,6 @@ Projects are saved locally in your browser. Copy and download produce PNG images
 
 SignalMaker derives its UI from [SignMaker](https://github.com/JKPotato-Computer/SignMaker), including the [SignMaker v2.2 development project](https://github.com/DuskDarf1/SignMaker). The inherited project history and GNU GPL version 3 license are retained; see [LICENSE](LICENSE).
 
-Credit to XtraLqrge for the search function in the regulatory sign selector, the icon upload feature, the clear all button, and the click-to-open menu action.
+Credit to XtraLqrge for the search function in the regulatory sign selector, the icon upload feature, the clear all button, the click-to-open menu action, the undo/redo feature, and symbol picker dropdown.
 
 Regulatory artwork provenance and extraction metadata are retained in `assets/regulatory-signs/`.

@@ -22,6 +22,144 @@
     const options = (values, selected) => Object.entries(values).map(([value, label]) =>
       `<option value="${value}" ${String(selected) === value ? 'selected' : ''}>${label}</option>`).join('');
 
+    // SignMaker's custom picker pattern, with a floating menu (GPL-3.0).
+    const symbolMenu = document.createElement('div');
+    symbolMenu.id = 'signalSymbolMenu';
+    symbolMenu.className = 'symbolPickerMenu';
+    symbolMenu.setAttribute('role', 'listbox');
+    symbolMenu.setAttribute('aria-label', 'Indication symbol');
+    symbolMenu.setAttribute('aria-hidden', 'true');
+    symbolMenu.inert = true;
+    document.body.append(symbolMenu);
+    const symbolValues = Object.keys(app.symbols);
+    const symbolLabel = value => `<span class="symbolPickerIcon">${app.renderSymbolIcon(value)}</span><span class="symbolPickerLabel">${app.escape(app.symbols[value])}</span>`;
+    let openSymbolPicker = null;
+    let activeSymbolIndex = 0;
+    let symbolSearch = '';
+    let symbolSearchTime = 0;
+
+    function closeSymbolPicker(restoreFocus = false) {
+      const trigger = openSymbolPicker;
+      trigger?.closest('.symbolPicker')?.classList.remove('open');
+      trigger?.setAttribute('aria-expanded', 'false');
+      trigger?.removeAttribute('aria-activedescendant');
+      symbolMenu.classList.remove('open');
+      symbolMenu.setAttribute('aria-hidden', 'true');
+      symbolMenu.inert = true;
+      openSymbolPicker = null;
+      if (restoreFocus && trigger?.isConnected) trigger.focus({ preventScroll: true });
+    }
+
+    function positionSymbolMenu() {
+      if (!openSymbolPicker) return;
+      if (!openSymbolPicker.isConnected || !openSymbolPicker.getClientRects().length) { closeSymbolPicker(); return; }
+      const rect = openSymbolPicker.getBoundingClientRect();
+      const edge = 8, gap = 3;
+      const width = Math.min(Math.max(rect.width, 220), window.innerWidth - edge * 2);
+      const below = Math.max(0, window.innerHeight - rect.bottom - edge - gap);
+      const above = Math.max(0, rect.top - edge - gap);
+      const upwards = below < Math.min(symbolMenu.scrollHeight, 320) && above > below;
+      const height = Math.min(symbolMenu.scrollHeight, window.innerHeight * 0.65, upwards ? above : below);
+      symbolMenu.style.width = `${width}px`;
+      symbolMenu.style.maxHeight = `${height}px`;
+      symbolMenu.style.left = `${Math.max(edge, Math.min(rect.left, window.innerWidth - width - edge))}px`;
+      symbolMenu.style.top = `${upwards ? rect.top - gap - height : rect.bottom + gap}px`;
+      symbolMenu.classList.toggle('opensUp', upwards);
+    }
+
+    function highlightSymbol(index) {
+      activeSymbolIndex = (index + symbolValues.length) % symbolValues.length;
+      const rows = [...symbolMenu.children];
+      rows.forEach((row, rowIndex) => row.classList.toggle('active', rowIndex === activeSymbolIndex));
+      const active = rows[activeSymbolIndex];
+      openSymbolPicker?.setAttribute('aria-activedescendant', active.id);
+      if (active.offsetTop < symbolMenu.scrollTop) symbolMenu.scrollTop = active.offsetTop;
+      else if (active.offsetTop + active.offsetHeight > symbolMenu.scrollTop + symbolMenu.clientHeight) {
+        symbolMenu.scrollTop = active.offsetTop + active.offsetHeight - symbolMenu.clientHeight;
+      }
+    }
+
+    function showSymbolPicker(trigger) {
+      closeSymbolPicker();
+      if (trigger.disabled) return;
+      const select = get(trigger.dataset.symbolSelect);
+      openSymbolPicker = trigger;
+      symbolSearch = '';
+      symbolMenu.innerHTML = symbolValues.map((value, index) => `<button type="button" id="signal-symbol-option-${index}" class="symbolPickerItem${select.value === value ? ' selected' : ''}" role="option" aria-selected="${select.value === value}" tabindex="-1" data-symbol-value="${value}">${symbolLabel(value)}<span class="symbolPickerCheck" aria-hidden="true">${select.value === value ? '✓' : ''}</span></button>`).join('');
+      trigger.closest('.symbolPicker').classList.add('open');
+      trigger.setAttribute('aria-expanded', 'true');
+      symbolMenu.setAttribute('aria-hidden', 'false');
+      symbolMenu.inert = false;
+      positionSymbolMenu();
+      // Measure the closed state before starting SignMaker's opening transition.
+      void symbolMenu.offsetHeight;
+      symbolMenu.classList.add('open');
+      highlightSymbol(symbolValues.indexOf(select.value));
+      trigger.focus({ preventScroll: true });
+    }
+
+    function chooseSymbol(value) {
+      if (!openSymbolPicker || !Object.hasOwn(app.symbols, value)) return;
+      const select = get(openSymbolPicker.dataset.symbolSelect);
+      closeSymbolPicker(true);
+      if (select.value === value) return;
+      select.value = value;
+      select.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+
+    indicationList.addEventListener('click', event => {
+      const trigger = event.target.closest('.symbolPickerTrigger');
+      if (!trigger) return;
+      event.preventDefault();
+      event.stopPropagation();
+      if (openSymbolPicker === trigger) closeSymbolPicker();
+      else showSymbolPicker(trigger);
+    });
+    symbolMenu.addEventListener('pointerdown', event => {
+      if (event.target.closest('[data-symbol-value]')) event.preventDefault();
+    });
+    symbolMenu.addEventListener('click', event => {
+      const item = event.target.closest('[data-symbol-value]');
+      if (!item) return;
+      event.preventDefault();
+      event.stopPropagation();
+      chooseSymbol(item.dataset.symbolValue);
+    });
+    document.addEventListener('pointerdown', event => {
+      if (openSymbolPicker && !openSymbolPicker.contains(event.target) && !symbolMenu.contains(event.target)) closeSymbolPicker();
+    }, true);
+    document.addEventListener('keydown', event => {
+      const trigger = event.target.closest?.('.symbolPickerTrigger');
+      if (event.key === 'Escape' && openSymbolPicker) {
+        event.preventDefault(); event.stopImmediatePropagation(); closeSymbolPicker(true); return;
+      }
+      if (event.key === 'Tab') { closeSymbolPicker(); return; }
+      if (!trigger || trigger.disabled || event.ctrlKey || event.metaKey || event.altKey || event.isComposing) return;
+      if (['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) {
+        event.preventDefault();
+        if (openSymbolPicker !== trigger) { showSymbolPicker(trigger); return; }
+        highlightSymbol(event.key === 'Home' ? 0 : event.key === 'End' ? symbolValues.length - 1
+          : activeSymbolIndex + (event.key === 'ArrowDown' ? 1 : -1));
+      } else if (['Enter', ' '].includes(event.key)) {
+        event.preventDefault();
+        if (openSymbolPicker === trigger) chooseSymbol(symbolValues[activeSymbolIndex]);
+        else showSymbolPicker(trigger);
+      } else if (event.key.length === 1) {
+        event.preventDefault();
+        if (openSymbolPicker !== trigger) showSymbolPicker(trigger);
+        const now = Date.now();
+        symbolSearch = now - symbolSearchTime < 650 ? symbolSearch + event.key.toLowerCase() : event.key.toLowerCase();
+        symbolSearchTime = now;
+        const prefix = [...symbolSearch].every(letter => letter === symbolSearch[0]) ? symbolSearch[0] : symbolSearch;
+        for (let offset = 1; offset <= symbolValues.length; offset++) {
+          const index = (activeSymbolIndex + offset) % symbolValues.length;
+          if (app.symbols[symbolValues[index]].toLowerCase().startsWith(prefix)) { highlightSymbol(index); break; }
+        }
+      }
+    }, true);
+    window.addEventListener('resize', positionSymbolMenu);
+    window.addEventListener('scroll', positionSymbolMenu, true);
+
     function fitPreview() {
       const container = get('headContainer');
       if (!container) { stage.style.paddingBottom = '0px'; stage.style.paddingLeft = '0px'; return; }
@@ -194,6 +332,7 @@
     }
 
     function renderEditor(head) {
+      closeSymbolPicker();
       form.hidden = !head;
       get('headEditorEmpty').hidden = Boolean(head);
       if (!head) { get('indicationList').replaceChildren(); return; }
@@ -213,7 +352,10 @@
         <legend>Indication ${index + 1}${head.cluster || head.hawk ? ` - ${positions[index]}` : ''}</legend>
         <div class="aplArrowListItem">
           <button id="move-${section.id}" type="button" class="aplArrowDragHandle" draggable="${!head.hawk}" ${head.hawk ? 'disabled' : ''} aria-label="Move indication ${index + 1}" aria-keyshortcuts="ArrowUp ArrowDown" title="Drag to reorder; arrow keys also move this indication">Move</button>
-          <select id="symbol-${section.id}" data-indication-field="symbol" ${head.hawk ? 'disabled' : ''} aria-label="Indication ${index + 1} symbol">${options(app.symbols, section.symbol)}</select>
+          <div class="symbolPicker">
+            <select id="symbol-${section.id}" data-indication-field="symbol" hidden ${head.hawk ? 'disabled' : ''} aria-label="Indication ${index + 1} symbol">${options(app.symbols, section.symbol)}</select>
+            <button id="symbol-trigger-${section.id}" type="button" class="symbolPickerTrigger" role="combobox" aria-haspopup="listbox" aria-controls="signalSymbolMenu" aria-expanded="false" aria-label="Indication ${index + 1} symbol: ${app.escape(app.symbols[section.symbol])}" data-symbol-select="symbol-${section.id}" ${head.hawk ? 'disabled' : ''}>${symbolLabel(section.symbol)}<svg class="symbolPickerCaret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.25 9.25l4.75 4.75 4.75-4.75"/></svg></button>
+          </div>
           <select id="size-${section.id}" data-indication-field="size" aria-label="Indication ${index + 1} lens size">${options({ 8: '8 in', 12: '12 in' }, section.size)}</select>
           <button type="button" class="aplArrowDeleteButton" data-indication-action="remove" ${head.cluster || head.hawk || head.indications.length === 1 ? 'disabled' : ''} aria-label="Delete indication ${index + 1}">Delete</button>
         </div>
@@ -304,6 +446,7 @@
       if (focusId && document.activeElement?.id !== focusId) get(focusId)?.focus({ preventScroll: true });
       form.parentElement.scrollTop = scroll;
       headList.scrollTop = listScroll;
+      app.recordHistory?.();
       app.onDrawingChanged?.();
     }
 
@@ -423,12 +566,21 @@
       } else if (input.dataset.indicationField) {
         if (head.hawk && input.dataset.indicationField !== 'size') return;
         const section = head.indications.find(section => section.id === input.closest('[data-indication-id]').dataset.indicationId);
-        if (input.dataset.indicationField === 'symbol') app.setIndicationSymbol(section, value);
+        if (input.dataset.indicationField === 'symbol') {
+          app.setIndicationSymbol(section, value);
+          const trigger = get(`symbol-trigger-${section.id}`);
+          trigger.querySelector('.symbolPickerIcon').innerHTML = app.renderSymbolIcon(value);
+          trigger.querySelector('.symbolPickerLabel').textContent = app.symbols[value];
+          trigger.setAttribute('aria-label', `Indication ${head.indications.indexOf(section) + 1} symbol: ${app.symbols[value]}`);
+          const color = get(`color-${section.id}`);
+          color.innerHTML = options(app.isBusSymbol(value) ? { white: 'White' } : { red: 'Red', yellow: 'Yellow', green: 'Green' }, section.color);
+          color.disabled = head.hawk || app.isBusSymbol(value);
+        }
         else if (input.dataset.indicationField !== 'color' || !app.isBusSymbol(section.symbol)) {
           section[input.dataset.indicationField] = input.dataset.indicationField === 'size' ? Number(value) : value;
         }
       }
-      refresh();
+      refresh(input.dataset.indicationField !== 'symbol');
     });
     get('addIndication').addEventListener('click', () => {
       const head = selectedHead();
