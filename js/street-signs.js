@@ -2,6 +2,9 @@
 (() => {
   const app = window.SignalMaker;
   const palette = { Green: '#005f4d', Blue: '#00437b', Brown: '#62331e', Yellow: '#fccf34', White: '#ffffff', Black: '#000000', Purple: '#4b0082', Orange: '#ff5904', Red: '#ff0000', 'Fluorescent Pink': '#ff33cc', 'Fluorescent Yellow-Green': '#99ff00' };
+  // Exact SVG paths from SignMaker v2.2 img/arrowBlocks (GPL-3.0); originals
+  // retained in assets/street-arrows. Rotate only, preserving artwork proportions.
+  const streetArrows = {"TYPE_D": {"width": 641.0, "height": 1044.0, "path": "M202.043,1043.75l237.768,0l4.448,-565.97l128.724,44.095c41.034,13.065 81.846,-31.886 61.828,-63.038l-314.268,-458.837l-314.655,456.427c-21.898,31.636 21.725,77.052 57.952,65.448l137.724,-42.28l0.479,564.155Z"}, "TYPE_A_EXTENDED": {"width": 3405.0, "height": 7346.0, "path": "M1294.18,2338.77l-212.466,5007.07l1243.62,0l-211.68,-5004.06l1102.61,253.101c124.65,32.272 242.847,-96.569 162.077,-219.427l-1582.64,-2330.6c-41.744,-59.945 -152.942,-60.306 -197.97,1.978l-1579.27,2334.9c-60.513,94.642 38.278,241.776 142.951,214.895l1132.77,-257.86l0,0.009Z"}};
   const fonts = ['Clearview 1', 'Clearview 2', 'Clearview 3', 'Clearview 4', 'Clearview 5WR', 'Clearview 5', 'Clearview 6', 'Series A', 'Series B', 'Series C', 'Series D', 'Series E', 'Series EM', 'Series F', 'Arial', 'Arial Bold', 'Transport', 'Modern VMS'];
   const fontFiles = {};
   for (const series of ['B', 'C', 'D', 'E', 'EM', 'F']) fontFiles[`Series ${series}`] = `Roadgeek2014Series${series}.woff2`;
@@ -23,7 +26,7 @@
   const streetSignPosition = (sign, support) => sign[signPositionKey(sign, support)];
   function createStreetText() {
     return { id: uid(), textContent: 'Street Name', fontFamily: 'Series EM', fontSize: 200, lineHeight: 75,
-      backgroundColor: 'Inherit', textColor: 'Match BG', spacing: 0, smallCapitals: false, alignment: 'Center', justification: 'Center',
+      arrow: 'none', arrowSide: 'left', backgroundColor: 'Inherit', textColor: 'Match BG', spacing: 0, smallCapitals: false, alignment: 'Center', justification: 'Center',
       useNumeralFormatting: false, numeralFormattingSize: 120, useBannerFormatting: false, bannerFormattingSize: 100, bannerFirstLetterSize: 120 };
   }
   function createStreetSign(name = 'Street Sign 1') {
@@ -63,6 +66,8 @@
         const text = createStreetText();
         if (typeof value?.textContent === 'string') text.textContent = value.textContent.slice(0, 2000);
         text.fontFamily = choice(value?.fontFamily, fonts, 'Series EM');
+        text.arrow = choice(value?.arrow, ['none', ...Object.keys(streetArrows)], 'none');
+        text.arrowSide = choice(value?.arrowSide, ['left', 'right'], 'left');
         text.backgroundColor = choice(value?.backgroundColor, ['Inherit', ...Object.keys(palette)], 'Inherit');
         text.textColor = choice(value?.textColor, ['Match BG', ...Object.keys(palette)], 'Match BG');
         for (const key of ['alignment', 'justification']) text[key] = choice(value?.[key], ['Left', 'Center', 'Right'], 'Center');
@@ -123,8 +128,14 @@
       const lines = text.textContent.replace(/\\n/g, '\n').replace(/\\t/g, '\t').split('\n').map(line => textRuns(line, text, font));
       const baseSize = 10.5 * text.fontSize / 100;
       const lineHeight = baseSize * (text.lineHeight / 100 + 0.2);
-      const width = Math.max(0, ...lines.map(runs => runs.reduce((sum, run) => sum + run.width, 0)));
-      return { text, font, lines, width, lineHeight, height: Math.max(lineHeight, ...lines.flat().map(run => run.size * 0.7)) + lineHeight * (lines.length - 1) };
+      const artwork = streetArrows[text.arrow];
+      const arrow = artwork ? { ...artwork, length: baseSize * 1.5,
+        thickness: baseSize * 1.5 * artwork.width / artwork.height, gap: baseSize * 0.4 } : null;
+      const arrowSpace = arrow ? arrow.length + arrow.gap : 0;
+      const width = Math.max(0, ...lines.map(runs => runs.reduce((sum, run) => sum + run.width, 0))) + arrowSpace;
+      const rowLineHeight = Math.max(lineHeight, arrow?.thickness ?? 0);
+      return { text, font, lines, width, arrow, arrowSpace, lineHeight: rowLineHeight,
+        height: Math.max(rowLineHeight, ...lines.flat().map(run => run.size * 0.7)) + rowLineHeight * (lines.length - 1) };
     });
     const border = 1.2;
     const textWidth = Math.max(12, ...rows.map(row => row.width + row.text.spacing * 12));
@@ -183,11 +194,19 @@
       const color = text.textColor === 'Match BG' ? contrast(text.backgroundColor === 'Inherit' ? sign.color : text.backgroundColor) : palette[text.textColor];
       if (text.backgroundColor !== 'Inherit') result += `<rect x="${start}" y="${y}" width="${row.width}" height="${row.height}" fill="${palette[text.backgroundColor]}"/>`;
       row.lines.forEach((runs, index) => {
-        const width = runs.reduce((sum, run) => sum + run.width, 0);
+        const textWidth = runs.reduce((sum, run) => sum + run.width, 0);
+        const width = textWidth + row.arrowSpace;
         let x = start + (text.justification === 'Left' ? 0 : text.justification === 'Right' ? row.width - width : (row.width - width) / 2);
         const cap = font.startsWith('Clearview ') ? 0.69046875 : font.startsWith('Series ') ? 0.5690625 : 0.7;
         const maxCap = Math.max(0, ...runs.map(run => run.size * cap));
         const baseline = y + index * row.lineHeight + (row.height - (row.lines.length - 1) * row.lineHeight + maxCap) / 2;
+        if (row.arrow) {
+          const arrow = row.arrow;
+          const cx = x + (text.arrowSide === 'right' ? textWidth + arrow.gap : 0) + arrow.length / 2;
+          const cy = y + index * row.lineHeight + (row.height - (row.lines.length - 1) * row.lineHeight) / 2;
+          result += `<g class="streetTextArrow" transform="translate(${cx} ${cy}) rotate(${text.arrowSide === 'right' ? 90 : -90}) scale(${arrow.length / arrow.height}) translate(${-arrow.width / 2} ${-arrow.height / 2})" fill="${color}" fill-rule="evenodd" stroke-linejoin="round"><path d="${arrow.path}"/></g>`;
+          if (text.arrowSide === 'left') x += row.arrowSpace;
+        }
         for (const run of runs) {
           const family = font === 'Arial Bold' ? 'Arial' : font;
           result += `<text xml:space="preserve" x="${x}" y="${baseline}" font-family="${esc(`"${family}", "Series EM"`)}" font-size="${run.size}"${text.smallCapitals ? ' font-variant="small-caps"' : ''}${font === 'Arial Bold' ? ' font-weight="bold"' : ''} fill="${color}">${esc(run.content)}</text>`;

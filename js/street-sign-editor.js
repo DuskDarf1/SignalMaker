@@ -6,6 +6,11 @@
                   <input type="text" id="streetText_textContent" data-text-field="textContent" class="sdTextEditorWide" placeholder="Street Name"
                     value="Street Name" />
                   <br />
+                  <label for="streetText_arrow">Arrow:</label>
+                  <select id="streetText_arrow" data-text-field="arrow"><option value="none">None</option><option value="TYPE_D">Type D</option><option value="TYPE_A_EXTENDED">Type A Extended</option></select>
+                  <label for="streetText_arrowSide">Arrow Side:</label>
+                  <select id="streetText_arrowSide" data-text-field="arrowSide"><option value="left">Left</option><option value="right">Right</option></select>
+                  <br />
                   <label for="streetText_backgroundColor">BG:</label>
                   <select id="streetText_backgroundColor" data-text-field="backgroundColor"></select>
                   <label for="streetText_textColor">Text:</label>
@@ -242,6 +247,7 @@
         if (input.type === 'checkbox') input.checked = text[input.dataset.textField];
         else input.value = text[input.dataset.textField];
       });
+      get('streetText_arrowSide').disabled = text.arrow === 'none';
       get('streetText_numeralFormattingSize').hidden = !text.useNumeralFormatting;
       get('streetText_bannerFormattingSize').hidden = !text.useBannerFormatting;
       get('streetText_bannerFirstLetterSize').hidden = !text.useBannerFormatting;
