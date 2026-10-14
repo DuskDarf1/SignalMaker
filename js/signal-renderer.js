@@ -37,6 +37,22 @@
 
    function headMarkup(head, geometry) {
      const color = app.housingColors[head.housingColor];
+     if (head.pedestrian) {
+       const ped = app.dimensions.pedestrian;
+       const walk = head.pedestrianDisplay === 'walk';
+       const paths = walk ? ped.walk : [ped.hand];
+       // Twelve-inch symbols share a left edge, leaving room for a countdown.
+       // Bounds come from the extracted MUTCD paths; keep their proportions.
+       const tx = walk ? 453.472656 : 450.95;
+       const ty = walk ? 598.798828 : 535.761719;
+       const symbolHeight = walk ? 38.917968 : 38.914062;
+       const { width, height } = ped;
+       return `<rect width="${width}" height="${height}" rx="0.65" fill="${color}" stroke="#151618" stroke-width="0.15"/>
+         <rect x="0.45" y="0.45" width="${width - 0.9}" height="${height - 0.9}" rx="0.5" fill="none" stroke="#000" stroke-width="0.15"/>
+         <rect x="1" y="1" width="${width - 2}" height="${height - 2}" rx="0.3" fill="#080b0c"/>
+         <path d="M1 ${height - 1} V1 H${width - 1} V${height - 1}" fill="none" stroke="#0c0e10" stroke-width="0.35"/>
+         <g transform="translate(2.5 ${height / 2}) scale(${12 / symbolHeight}) translate(${-tx} ${-ty})" fill="${walk ? '#fff' : '#f7921e'}">${paths.map(d => `<path d="${d}" fill-rule="evenodd"/>`).join('')}</g>`;
+     }
      let markup = '';
      if (head.backplate !== 'none') {
        const outer = app.backplatePath(head, geometry);
@@ -82,8 +98,11 @@
          if (item.head.poleMounted) {
            const bounds = app.armPositionBounds(item.head, project.support);
            const height = Math.max(bounds.min, Math.min(bounds.max, item.head.poleHeight ?? 120));
+           const mirrored = project.support.side === 'left';
+           const bracketSide = item.head.poleMountSide ?? (mirrored ? 'left' : 'right');
+           const direction = (bracketSide === 'left' ? -1 : 1) * (mirrored ? -1 : 1);
            const x = item.head.poleMounting === 'direct' ? mast.poleX
-             : mast.poleX + mast.poleDiameter / 2 + 6 + item.geometry.width / 2;
+             : mast.poleX + direction * (mast.poleDiameter / 2 + 6 + item.geometry.width / 2);
            item.x = (project.support.side === 'left' ? mast.width - x : x) - item.geometry.width / 2;
            item.y = app.dimensions.mast.poleHeight - height - item.geometry.height / 2;
            item.mountY = item.y + item.geometry.height / 2;
@@ -107,9 +126,20 @@
      if (app.hasSpan(project)) {
        const span = app.spanGeometry(project.support);
        const heads = project.heads.map(head => ({ head, geometry: app.headGeometry(head) }));
-       const maxHeight = Math.max(0, ...heads.map(item => item.geometry.height));
+       const maxHeight = Math.max(0, ...heads.filter(item => !item.head.poleMounted).map(item => item.geometry.height));
        const alignment = app.normalizeAlignment(project.alignment);
        heads.forEach(item => {
+         if (item.head.poleMounted) {
+           const right = item.head.spanPole === 'right';
+           const poleX = right ? span.rightX : span.leftX;
+           const poleWidth = project.support[right ? 'rightPostWidth' : 'leftPostWidth'];
+           const direction = item.head.poleMountSide === 'left' ? -1 : 1;
+           const bounds = app.armPositionBounds(item.head, project.support);
+           const height = Math.max(bounds.min, Math.min(bounds.max, item.head.poleHeight ?? 120));
+           item.x = poleX - item.geometry.width / 2 + (item.head.poleMounting === 'direct' ? 0 : direction * (poleWidth / 2 + 6 + item.geometry.width / 2));
+           item.y = span.height - height - item.geometry.height / 2;
+           return;
+         }
          const bounds = app.armPositionBounds(item.head, project.support);
          const position = Math.max(bounds.min, Math.min(bounds.max, item.head.armPosition ?? project.support.spanLength / 2));
          item.position = position;
@@ -137,7 +167,7 @@
      return { heads, width: Math.max(1, x - (heads.length ? project.spacing : 0)), height };
    }
 
-   function scene(project) {
+   function singleScene(project) {
      const layout = headScene(project);
      const signs = (project.streetSigns ?? []).map(sign => ({ sign, geometry: app.streetSignGeometry(sign) }));
      const poleLevels = { left: 0, right: 0 };
@@ -192,11 +222,25 @@
        }
      });
      layout.streetSigns = signs;
-     if (!signs.length && !layout.mast) return layout;
+     if (!signs.length && !layout.mast && !layout.heads.some(item => item.head.poleMounted)) return layout;
      const envelopes = [...layout.heads, ...signs];
-     const left = Math.min(0, ...envelopes.map(item => item.x));
+     // Reserve both side-bracket envelopes even for direct mounting, so
+     // changing a pole head's mount does not change the assembly fit scale.
+     const poleEnvelopes = layout.mast ? layout.heads.filter(item => item.head.poleMounted).map(item => {
+       const mast = layout.mast;
+       const poleX = layout.reversed ? mast.width - mast.poleX : mast.poleX;
+       const reach = mast.poleDiameter / 2 + 6 + item.geometry.width;
+       return { left: poleX - reach, right: poleX + reach };
+     }) : layout.span ? layout.heads.filter(item => item.head.poleMounted).map(item => {
+       const right = item.head.spanPole === 'right';
+       const poleX = right ? layout.span.rightX : layout.span.leftX;
+       const width = project.support[right ? 'rightPostWidth' : 'leftPostWidth'];
+       const reach = width / 2 + 6 + item.geometry.width;
+       return { left: poleX - reach, right: poleX + reach };
+     }) : [];
+     const left = Math.min(0, ...envelopes.map(item => item.x), ...poleEnvelopes.map(item => item.left));
      const top = Math.min(0, ...envelopes.map(item => item.y));
-     const right = Math.max(layout.width, ...envelopes.map(item => item.x + item.geometry.width));
+     const right = Math.max(layout.width, ...envelopes.map(item => item.x + item.geometry.width), ...poleEnvelopes.map(item => item.right));
      const bottom = Math.max(layout.height, ...envelopes.map(item => item.y + item.geometry.height));
      layout.supportOffset = { x: -left, y: -top };
      [...layout.heads, ...signs].forEach(item => { item.x -= left; item.y -= top; });
@@ -209,6 +253,36 @@
      if (layout.supportStart != null) layout.supportStart = layout.reversed
        ? layout.width - (layout.mast.width - layout.mast.armX - left) : layout.supportStart - left;
      return layout;
+   }
+
+   function scene(project) {
+     const projects = app.mastArmProjects?.(project) ?? [project];
+     if (projects.length < 2) return singleScene(project);
+     // Place pole centers at physical approach distances and align all poles
+     // to the same grade, even when individual arms have different slopes/bows.
+     const spacing = project.mastArmSpacing ?? 720;
+     const assemblies = projects.map((assembly, index) => {
+       const layout = singleScene(assembly);
+       const poleX = (layout.reversed ? layout.mast.width - layout.mast.poleX : layout.mast.poleX)
+         + (layout.supportOffset?.x ?? 0);
+       return { project: assembly, layout, index, x: index * spacing - poleX,
+         y: -layout.mast.offsetY - (layout.supportOffset?.y ?? 0) };
+     });
+     const left = Math.min(...assemblies.map(item => item.x));
+     const top = Math.min(...assemblies.map(item => item.y));
+     const width = Math.max(...assemblies.map(item => item.x + item.layout.width)) - left;
+     const height = Math.max(...assemblies.map(item => item.y + item.layout.height)) - top;
+     assemblies.forEach(item => { item.x -= left; item.y -= top; });
+     const selected = assemblies[project.activeMastArm ?? 0];
+     const active = selected.layout;
+     return { ...active, assemblies, width, height,
+       supportOffset: { x: selected.x + (active.supportOffset?.x ?? 0), y: selected.y + (active.supportOffset?.y ?? 0) },
+       supportStart: active.reversed ? width - selected.x - active.width + active.supportStart : selected.x + active.supportStart,
+       heads: assemblies.flatMap(item => item.layout.heads.map(head => ({ ...head,
+         x: head.x + item.x, y: head.y + item.y, mastArmIndex: item.index }))),
+       streetSigns: assemblies.flatMap(item => item.layout.streetSigns.map(sign => ({ ...sign,
+         x: sign.x + item.x, y: sign.y + item.y, mastArmIndex: item.index }))),
+     };
    }
 
    function tone(color, amount) {
@@ -233,12 +307,14 @@
    }
 
    function concretePoleMarkup(x, top, bottom, baseWidth, topWidth, color) {
+     // Concrete strain poles always use the Silver base finish, independently of cables.
+     color = '#a9a9a9';
      const chamfer = app.dimensions.span.concreteChamfer;
      const leftTop = x - topWidth / 2;
      const rightTop = x + topWidth / 2;
      const leftBase = x - baseWidth / 2;
      const rightBase = x + baseWidth / 2;
-     return `<g class="supportPost concretePost">
+     return `<g class="supportPost concretePost" fill="${color}">
        <path d="M${leftTop} ${top} H${rightTop} L${rightBase} ${bottom} H${leftBase} Z"/>
        <path d="M${leftTop} ${top} H${leftTop + chamfer} L${leftBase + chamfer} ${bottom} H${leftBase} Z" fill="${tone(color, 0.15)}"/>
        <path d="M${rightTop - chamfer} ${top} H${rightTop} L${rightBase} ${bottom} H${rightBase - chamfer} Z" fill="${tone(color, -0.12)}"/>
@@ -288,7 +364,16 @@
            concrete ? `<g class="concreteEyebolt" fill="none" stroke="${tone(color, -0.3)}" stroke-width="0.75">
              <path d="M${x + side * 1.5} ${y} H${x + side * 5}"/><circle cx="${x}" cy="${y}" r="1.5"/>
            </g>` : `<rect x="${x - 3}" y="${y - 2}" width="6" height="4" rx="1" fill="${tone(color, -0.2)}"/>`).join('')}
-         ${layout.heads.map(item => {
+         ${layout.heads.filter(item => item.head.poleMounted).map(item => {
+           const right = item.head.spanPole === 'right';
+           const poleX = right ? span.rightX : span.leftX;
+           const width = support[right ? 'rightPostWidth' : 'leftPostWidth'];
+           const extension = item.head.poleMounting === 'direct' ? 0 : 9;
+           const x = poleX - width / 2 - (item.head.poleMountSide === 'left' ? extension : 0);
+           const center = item.y + item.geometry.height / 2 - (layout.supportOffset?.y ?? 0);
+           return [-1, 1].map(side => `<rect class="spanPoleSignalMount" x="${x}" y="${center + side * item.geometry.height * 0.3 - 1}" width="${width + extension}" height="2" fill="${color}"/>`).join('');
+         }).join('')}
+         ${layout.heads.filter(item => !item.head.poleMounted).map(item => {
            const x = span.spanX + item.position;
            const upper = span.upperAt(item.position);
            const lower = span.lowerAt(item.position);
@@ -321,7 +406,10 @@
          const centerY = item.y + item.geometry.height / 2 - mast.offsetY - (layout.supportOffset?.y ?? 0);
          // Direct mounting uses two bands on the pole face; side mounting adds a schematic 9-inch bracket extension.
          const extension = item.head.poleMounting === 'direct' ? 0 : 9;
-         return [-1, 1].map(side => `<g class="poleSignalMount ${item.head.poleMounting === 'direct' ? 'directPoleMount' : 'sidePoleMount'}"><rect x="${poleX - poleDiameter / 2}" y="${centerY + side * item.geometry.height * 0.3 - 1}" width="${poleDiameter + extension}" height="2"/><rect x="${poleX - poleDiameter / 2}" y="${centerY + side * item.geometry.height * 0.3}" width="${poleDiameter + extension}" height="1" fill="${tone(color, -0.3)}"/></g>`).join('');
+         const bracketSide = item.head.poleMountSide ?? (project.support.side === 'left' ? 'left' : 'right');
+         const direction = (bracketSide === 'left' ? -1 : 1) * (project.support.side === 'left' ? -1 : 1);
+         const bracketX = poleX - poleDiameter / 2 - (direction < 0 ? extension : 0);
+         return [-1, 1].map(side => `<g class="poleSignalMount ${item.head.poleMounting === 'direct' ? 'directPoleMount' : 'sidePoleMount'}"><rect x="${bracketX}" y="${centerY + side * item.geometry.height * 0.3 - 1}" width="${poleDiameter + extension}" height="2"/><rect x="${bracketX}" y="${centerY + side * item.geometry.height * 0.3}" width="${poleDiameter + extension}" height="1" fill="${tone(color, -0.3)}"/></g>`).join('');
        }).join('')}
      </g></g>${(mast.angle || mast.bowAngle) && project.support.mastHeadAlignment !== 'arm-center' ? layout.heads.filter(item => !item.head.poleMounted).map(item => {
        const x = item.x + item.geometry.width / 2 - (layout.supportOffset?.x ?? 0);
@@ -356,9 +444,13 @@
      }).join('');
    }
 
-   function supportMarkup(project, layout) {
+   function supportMarkup(project, layout, interactive = false, armIndex = 0) {
+     if (layout.assemblies) return layout.assemblies.map(item =>
+       `<g transform="translate(${item.x} ${item.y})">${supportMarkup(item.project, item.layout, interactive, item.index)}</g>`).join('');
      const offset = layout.supportOffset ?? { x: 0, y: 0 };
-     return `<g transform="translate(${offset.x} ${offset.y})">${rawSupportMarkup(project, layout)}</g>${streetMountMarkup(project, layout)}`;
+     const target = interactive && layout.mast
+       ? `data-select-mast-arm="${armIndex}" data-mast-arm-index="${armIndex}" role="button" tabindex="0" aria-label="Edit ${app.escape(project.mastArmName ?? `Mast Arm ${armIndex + 1}`)}"` : '';
+     return `<g transform="translate(${offset.x} ${offset.y})" ${target}>${interactive && layout.mast ? '<g class="mastArmVisual">' : ''}${rawSupportMarkup(project, layout)}${interactive && layout.mast ? '</g>' : ''}</g>${streetMountMarkup(project, layout)}`;
    }
 
    function renderSVG(project) {
@@ -380,12 +472,12 @@
    function renderPreview(project) {
      const layout = scene(project);
      const supported = app.hasSupport(project);
-     const support = supported ? `<svg class="${layout.mast ? 'mastSupport' : 'spanSupport'}" viewBox="0 0 ${layout.width} ${layout.height}" aria-hidden="true">${supportMarkup(project, layout)}</svg>` : '';
-     return `<div id="headContainer" class="${layout.mast ? 'mastScene' : layout.span ? 'spanScene' : layout.streetSigns?.length ? 'signScene' : ''}" data-alignment="${app.normalizeAlignment(project.alignment)}">${support}${layout.heads.map(({ head, geometry }) =>
-       `<div class="previewHead" data-head-id="${head.id}" role="button" tabindex="0" draggable="true" ${supported && head.poleMounted && app.hasMast(project) ? 'aria-keyshortcuts="ArrowUp ArrowDown" title="Drag vertically on the pole; up/down arrow keys also move this head"' : supported ? 'aria-keyshortcuts="ArrowLeft ArrowRight" title="Drag along the support; left/right arrow keys also move this head"' : ''} aria-label="Edit ${app.escape(app.displayName(head))}" aria-pressed="${head.id === project.selectedId}">
+     const support = supported ? `<svg class="${layout.mast ? 'mastSupport' : 'spanSupport'}" viewBox="0 0 ${layout.width} ${layout.height}" ${layout.mast ? 'role="group" aria-label="Mast arm supports"' : 'aria-hidden="true"'}>${supportMarkup(project, layout, true)}</svg>` : '';
+     return `<div id="headContainer" class="${layout.mast ? 'mastScene' : layout.span ? 'spanScene' : layout.streetSigns?.length ? 'signScene' : ''}" data-alignment="${app.normalizeAlignment(project.alignment)}">${support}${layout.heads.map(({ head, geometry, mastArmIndex }) =>
+       `<div class="previewHead" data-head-id="${head.id}" ${mastArmIndex == null ? '' : `data-mast-arm-index="${mastArmIndex}"`} role="button" tabindex="0" draggable="true" ${supported && head.poleMounted ? 'aria-keyshortcuts="ArrowUp ArrowDown" title="Drag vertically on the pole; up/down arrow keys also move this head"' : supported ? 'aria-keyshortcuts="ArrowLeft ArrowRight" title="Drag along the support; left/right arrow keys also move this head"' : ''} aria-label="Edit ${app.escape(app.displayName(head))}" aria-pressed="${head.id === project.selectedId}">
          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${geometry.width} ${geometry.height}" aria-hidden="true">${headMarkup(head, geometry)}</svg>
-       </div>`).join('')}${(layout.streetSigns ?? []).map(({ sign, geometry }) =>
-       `<div class="previewStreetSign${app.isRegulatorySign(sign) ? ' regulatorySign' : ''}${app.signCanMove(sign, project.support) ? ' movableSign' : ''}" data-street-sign-id="${sign.id}" role="button" tabindex="0" aria-label="Edit ${app.escape(sign.name)}${geometry.regulatory ? app.escape(' — ' + geometry.regulatory.name) : ''}" aria-pressed="${sign.id === project.selectedStreetSignId}" ${app.signCanMove(sign, project.support) ? 'aria-keyshortcuts="ArrowLeft ArrowRight" title="Drag along the support; left/right arrow keys also move this sign"' : ''}><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${geometry.width} ${geometry.height}" aria-hidden="true">${app.streetSignMarkup(sign, geometry)}</svg></div>`).join('')}</div>`;
+       </div>`).join('')}${(layout.streetSigns ?? []).map(({ sign, geometry, mastArmIndex }) =>
+       `<div class="previewStreetSign${app.isRegulatorySign(sign) ? ' regulatorySign' : ''}${app.signCanMove(sign, project.support) ? ' movableSign' : ''}" data-street-sign-id="${sign.id}" ${mastArmIndex == null ? '' : `data-mast-arm-index="${mastArmIndex}"`} role="button" tabindex="0" aria-label="Edit ${app.escape(sign.name)}${geometry.regulatory ? app.escape(' — ' + geometry.regulatory.name) : ''}" aria-pressed="${sign.id === project.selectedStreetSignId}" ${app.signCanMove(sign, project.support) ? 'aria-keyshortcuts="ArrowLeft ArrowRight" title="Drag along the support; left/right arrow keys also move this sign"' : ''}><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${geometry.width} ${geometry.height}" aria-hidden="true">${app.streetSignMarkup(sign, geometry)}</svg></div>`).join('')}</div>`;
    }
 
    // Use the same signal artwork for the white symbol-picker previews.

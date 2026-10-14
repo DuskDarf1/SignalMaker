@@ -9,17 +9,20 @@
    document.addEventListener("DOMContentLoaded", () => {
      const toolbar = document.getElementById("configBar");
      const buttons = [...toolbar.querySelectorAll("[data-editor]")];
-     const headsMenu = document.getElementById("headsMenu");
      const copyMenu = document.getElementById('copyHeadContextMenu');
      const copyButton = document.getElementById('copy');
-     const headsButton = buttons.find(button => button.dataset.editor === "headsMenu");
 
+     const popovers = ['headsMenu', 'mastArmsMenu'].map(id => ({
+       menu: document.getElementById(id), button: buttons.find(button => button.dataset.editor === id),
+     }));
      function positionHeads() {
-       if (headsMenu.hidden) return;
-       const anchor = headsButton.getBoundingClientRect();
-       const bar = toolbar.getBoundingClientRect();
-       headsMenu.style.left = `${Math.max(10, Math.min(anchor.left, window.innerWidth - headsMenu.offsetWidth - 10))}px`;
-       headsMenu.style.bottom = `${window.innerHeight - bar.top + 10}px`;
+       for (const { menu, button } of popovers) {
+         if (menu.hidden) continue;
+         const anchor = button.getBoundingClientRect();
+         const bar = toolbar.getBoundingClientRect();
+         menu.style.left = `${Math.max(10, Math.min(anchor.left, window.innerWidth - menu.offsetWidth - 10))}px`;
+         menu.style.bottom = `${window.innerHeight - bar.top + 10}px`;
+       }
      }
 
      function showEditor(id) {
@@ -41,7 +44,7 @@
      });
 
      document.addEventListener("click", event => {
-       if (!headsMenu.hidden && !headsMenu.contains(event.target) && !headsButton.contains(event.target)) {
+       if (popovers.some(({ menu, button }) => !menu.hidden && !menu.contains(event.target) && !button.contains(event.target))) {
          showEditor(null);
        }
      });
@@ -283,5 +286,6 @@
          report('Signal image downloaded.');
        } catch { report('Could not download the image. Try again.'); }
      });
+     app.startTemplates({ project, showEditor, report });
    });
  })();

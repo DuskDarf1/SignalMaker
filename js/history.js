@@ -12,8 +12,16 @@
     let editingInput = null;
     const serialize = () => JSON.stringify(project);
     // Selection travels with an edit, but selecting alone is not an undo step.
-    const drawingKey = snapshot => JSON.stringify(JSON.parse(snapshot), (key, value) =>
-      ['selectedId', 'selectedStreetSignId', 'selectedTextIndex'].includes(key) ? undefined : value);
+    const drawingKey = snapshot => {
+      const drawing = JSON.parse(snapshot);
+      if (drawing.mastArms?.length) {
+        // The selected arm is an editor view of its saved assembly. Switching
+        // that view alone is selection, not a drawing edit or an undo step.
+        for (const key of ['activeMastArm', 'support', 'heads', 'streetSigns', 'alignment', 'spacing', 'mastArmId', 'mastArmName']) delete drawing[key];
+      }
+      return JSON.stringify(drawing, (key, value) =>
+        ['selectedId', 'selectedStreetSignId', 'selectedTextIndex', 'selectedElementIndex'].includes(key) ? undefined : value);
+    };
     let currentSnapshot = serialize();
 
     function updateButtons() {

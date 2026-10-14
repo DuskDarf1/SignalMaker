@@ -7,7 +7,7 @@
                     value="Street Name" />
                   <br />
                   <label for="streetText_arrow">Arrow:</label>
-                  <select id="streetText_arrow" data-text-field="arrow"><option value="none">None</option><option value="TYPE_D">Type D</option><option value="TYPE_A_EXTENDED">Type A Extended</option></select>
+                  <select id="streetText_arrow" data-text-field="arrow"><option value="none">None</option><option value="TYPE_D">Type D</option><option value="TYPE_A">Type A</option></select>
                   <label for="streetText_arrowSide">Arrow Side:</label>
                   <select id="streetText_arrowSide" data-text-field="arrowSide"><option value="left">Left</option><option value="right">Right</option></select>
                   <br />
@@ -95,14 +95,26 @@
         ${['Top', 'Right', 'Bottom', 'Left'].map(side => numeric(`streetPadding${side}`, `Padding ${side}:`, `padding${side}`, ['Top', 'Bottom'].includes(side) ? 0.3 : 0.75, 20, 0.01)).join('')}
       </details>
       <hr /><h3>Icon</h3>
-      <div class="headActions"><button id="uploadStreetSignIcon" type="button">Upload Icon</button><button id="removeStreetSignIcon" type="button">Remove Icon</button></div>
+      <div class="headActions"><button id="chooseStreetSignIcon" type="button">Choose Icon</button><button id="uploadStreetSignIcon" type="button">Upload Icon</button><button id="removeStreetSignIcon" type="button">Remove Icon</button></div>
       <input id="streetSignIconFile" type="file" accept="image/*,.svg" aria-label="Upload street sign icon" hidden />
       <p id="streetSignIconStatus" role="status"></p>
       ${select('streetSignIconSide', 'Icon Side:', 'iconSide', [['left', 'Left'], ['right', 'Right']])}
+      <div id="streetIconStyleOptions">
+      <div class="fieldRow"><label for="streetIconSize">Icon Size (%):</label><div class="dimensionInputs"><input id="streetIconSize" type="range" min="25" max="300" step="5" value="100" data-street-field="iconSize" aria-label="Icon size percent"/><input id="streetIconSizeValue" type="number" min="25" max="300" step="5" value="100" data-street-field="iconSize" aria-label="Icon size percent"/></div></div>
+      ${select('streetIconBackground', 'BG Color:', 'iconBackground', ['Transparent', ...Object.keys(app.streetPalette)].map(value => [value, value]))}
+      ${select('streetIconCorners', 'Corners:', 'iconCorners', [['Sharp', 'Sharp'], ['Round', 'Round']])}
+      <div class="fieldRow"><label for="streetIconPadding">BG Padding (in):</label><div class="dimensionInputs"><input id="streetIconPadding" type="range" min="0" max="6" step="0.25" value="0" data-street-field="iconBackgroundPadding" aria-label="Icon background padding in inches"/><input id="streetIconPaddingValue" type="number" min="0" max="6" step="0.25" value="0" data-street-field="iconBackgroundPadding" aria-label="Icon background padding in inches"/></div></div>
+      <div class="fieldRow"><label for="streetIconSquare">Square Aspect:</label><input id="streetIconSquare" type="checkbox" data-street-field="iconSquare"/></div>
+      <div class="fieldRow"><label for="streetIconExtend">White to Edges:</label><input id="streetIconExtend" type="checkbox" data-street-field="iconExtendBackground" title="Extend a square white background to the sign's top, bottom, and outer side"/></div>
+      </div>
       <hr /><h3>Control Text</h3>
+      <div class="fieldRow"><label for="streetElementSelection">Text Element:</label><select id="streetElementSelection" aria-label="Text element on the selected row"></select></div>
+      <div id="streetScriptSideRow" class="fieldRow" hidden><label for="streetText_scriptSide">Position:</label><select id="streetText_scriptSide" data-text-field="scriptSide" aria-label="Superscript or subscript position"><option value="left">Left</option><option value="right">Right</option></select></div>
+      <div class="headActions"><button type="button" data-street-element-action="superscript">Add Superscript</button><button type="button" data-street-element-action="subscript">Add Subscript</button><button id="deleteStreetElement" type="button" data-street-element-action="remove">Delete Element</button></div>
       <div class="headActions"><button type="button" data-street-text-action="add">New</button><button type="button" data-street-text-action="duplicate">Duplicate</button><button id="deleteStreetText" type="button" data-street-text-action="remove">Delete Selected</button></div>
       <div id="streetTextSelectionRow" class="fieldRow"><label for="streetTextSelection">Text Row:</label><select id="streetTextSelection"></select></div>
-      <div class="streetTextProperties">${controlTemplate}</div></div>`;
+      <div class="streetTextProperties">${controlTemplate}</div>
+      <div class="fieldRow"><label for="streetText_arrowSize">Arrow Size (%):</label><div class="dimensionInputs"><input id="streetText_arrowSize" type="range" min="25" max="300" step="5" value="100" data-text-field="arrowSize" aria-label="Arrow size percent"/><input id="streetText_arrowSizeValue" type="number" min="25" max="300" step="5" value="100" data-text-field="arrowSize" aria-label="Arrow size percent"/></div></div></div>`;
     form.addEventListener('submit', event => event.preventDefault());
     const properties = form.querySelector('[data-property="sdCtrlText"]');
     [...properties.querySelectorAll('label')].forEach(label => {
@@ -139,6 +151,7 @@
     let drag = null;
     const loadedFonts = new Set();
     const iconUploads = new WeakMap();
+    app.startStreetIconPicker({ project, selected, iconUploads });
     // SignMaker v2.2 iconSelectorModal / populateGrid pattern (GPL-3.0).
     const picker = get('regulatorySignPicker');
     const signGrid = get('regulatorySignGrid');
@@ -227,12 +240,16 @@
         get('regulatorySignDisplay').parentElement.hidden = !app.isBlankOut(sign);
       }
       form.querySelectorAll('[data-street-field]').forEach(input => {
+        if (input.type === 'checkbox') { input.checked = Boolean(sign[input.dataset.streetField]); return; }
         if (document.activeElement !== input) input.value = span && input.dataset.streetField === 'mounting' ? 'free-swinging' : sign[input.dataset.streetField] ?? ({ signType: 'static', display: 'on' }[input.dataset.streetField] ?? '');
       });
       get('streetSignMounting').disabled = span;
       get('streetSignSpanSide').parentElement.hidden = !span || regulatory;
       get('streetSignPositionOptions').hidden = !app.signCanMove(sign, project.support);
       get('streetSignPositionOptions').querySelector('label').textContent = span ? 'Span Position (ft):' : 'Arm Position (ft):';
+      get('streetIconStyleOptions').hidden = !sign.icon;
+      get('streetIconPadding').disabled = get('streetIconPaddingValue').disabled = !sign.iconExtendBackground && sign.iconBackground === 'Transparent';
+      get('streetIconBackground').disabled = get('streetIconCorners').disabled = get('streetIconSquare').disabled = Boolean(sign.iconExtendBackground);
       get('removeStreetSignIcon').disabled = !sign.icon && !iconUploads.has(sign);
       get('streetSignIconStatus').textContent = iconUploads.has(sign) ? 'Loading icon…' : sign.icon?.name ?? 'No icon';
       if (app.signCanMove(sign, project.support)) {
@@ -245,20 +262,29 @@
           if (document.activeElement !== input) input.value = Number((app.streetSignPosition(sign, project.support) / 12).toFixed(3));
         }
       }
-      for (const item of project.streetSigns.filter(item => !app.isRegulatorySign(item))) for (const row of item.texts) {
-        const font = app.streetFont(row, item);
+      for (const item of project.streetSigns.filter(item => !app.isRegulatorySign(item))) for (const row of item.texts) for (const element of [row, ...(row.scriptElements ?? [])]) {
+        const font = app.streetFont(element, item);
         if (loadedFonts.has(font)) continue;
         loadedFonts.add(font);
         document.fonts?.load(`21px "${font}"`).then(() => { if (!drag) app.refresh(false); }).catch(() => {});
       }
       if (regulatory) return;
-      const text = sign.texts[sign.selectedTextIndex];
+      const row = sign.texts[sign.selectedTextIndex];
+      const text = app.selectedStreetText(row);
+      const elementSelect = get('streetElementSelection');
+      elementSelect.innerHTML = '<option value="0">Main text</option>' + (row.scriptElements ?? []).map((element, index) => `<option value="${index + 1}">${element.script === 'subscript' ? 'Subscript' : 'Superscript'}: ${app.escape(element.textContent.slice(0, 40))}</option>`).join('');
+      elementSelect.value = row.selectedElementIndex ?? 0;
+      get('deleteStreetElement').disabled = !row.selectedElementIndex;
+      get('streetScriptSideRow').hidden = text === row;
       form.querySelectorAll('[data-text-field]').forEach(input => {
         if (!updateActiveText && document.activeElement === input) return;
         if (input.type === 'checkbox') input.checked = text[input.dataset.textField];
         else input.value = text[input.dataset.textField];
       });
-      get('streetText_arrowSide').disabled = text.arrow === 'none';
+      for (const field of ['spacing', 'alignment', 'justification', 'lineHeight', 'arrow', 'arrowSide', 'arrowSize', 'backgroundColor']) {
+        get(`streetText_${field}`)?.closest('.fieldRow')?.toggleAttribute('hidden', text !== row);
+      }
+      get('streetText_arrowSide').disabled = get('streetText_arrowSize').disabled = get('streetText_arrowSizeValue').disabled = text.arrow === 'none';
       get('streetText_numeralFormattingSize').hidden = !text.useNumeralFormatting;
       get('streetText_bannerFormattingSize').hidden = !text.useBannerFormatting;
       get('streetText_bannerFirstLetterSize').hidden = !text.useBannerFormatting;
@@ -404,6 +430,7 @@
           sign.icon = { src, width: canvas.width, height: canvas.height, name: file.name.slice(0, 160) };
           iconUploads.delete(sign);
           app.refresh(false);
+          if (!app.rememberStreetIcon(sign.icon)) get('streetSignIconStatus').textContent += ' — Library storage is unavailable or full; icon retained for this session.';
         });
       } catch {
         if (iconUploads.get(sign) !== request) return;
@@ -422,7 +449,7 @@
         item.id = app.createStreetSign().id;
         item.name = nextName(app.isRegulatorySign(item));
         get('regulatorySignSearch').value = '';
-        if (action === 'duplicate') item.texts.forEach(text => { text.id = app.createStreetText().id; });
+        if (action === 'duplicate') item.texts.forEach(text => { text.id = app.createStreetText().id; (text.scriptElements ?? []).forEach(element => { element.id = app.createStreetText().id; }); });
         project.streetSigns.push(item);
         project.selectedStreetSignId = item.id;
         app.ensureStreetSignPositions(project);
@@ -453,12 +480,35 @@
       if (!action) return;
       const text = sign.texts[sign.selectedTextIndex];
       if (action === 'add' || action === 'duplicate') {
-        const row = action === 'add' ? app.createStreetText() : { ...text, id: app.createStreetText().id };
+        const row = action === 'add' ? app.createStreetText() : { ...structuredClone(text), id: app.createStreetText().id, scriptElements: (text.scriptElements ?? []).map(element => ({ ...element, id: app.createStreetText().id })) };
         sign.texts.splice(sign.selectedTextIndex + 1, 0, row);
         sign.selectedTextIndex++;
       } else if (action === 'remove' && sign.texts.length > 1) {
         sign.texts.splice(sign.selectedTextIndex, 1);
         sign.selectedTextIndex = Math.min(sign.selectedTextIndex, sign.texts.length - 1);
+      }
+      app.refresh(false);
+    });
+    get('streetElementSelection').addEventListener('change', event => {
+      const sign = selected();
+      if (!sign) return;
+      sign.texts[sign.selectedTextIndex].selectedElementIndex = Number(event.target.value);
+      app.refresh(false);
+    });
+    form.addEventListener('click', event => {
+      const action = event.target.closest('[data-street-element-action]')?.dataset.streetElementAction;
+      const sign = selected();
+      if (!action || !sign) return;
+      const row = sign.texts[sign.selectedTextIndex];
+      row.scriptElements ??= [];
+      if (action === 'remove') {
+        if (!row.selectedElementIndex) return;
+        row.scriptElements.splice(row.selectedElementIndex - 1, 1);
+        row.selectedElementIndex = 0;
+      } else {
+        if (row.scriptElements.length >= 20) return;
+        row.scriptElements.push(app.createStreetScript(row, action));
+        row.selectedElementIndex = row.scriptElements.length;
       }
       app.refresh(false);
     });
@@ -477,7 +527,7 @@
         if (field === 'regulatoryCode' && !(app.regulatoryCatalog ?? []).some(entry => entry.id === input.value)) return;
         if (field === 'signType' && input.value === 'blank-out' && !app.canBlankOut(sign)) return;
         if (field === 'mounting' && app.hasSpan(project)) return;
-        const target = input.dataset.streetField ? sign : sign.texts[sign.selectedTextIndex];
+        const target = input.dataset.streetField ? sign : app.selectedStreetText(sign.texts[sign.selectedTextIndex]);
         target[field] = input.type === 'checkbox' ? input.checked : ['number', 'range'].includes(input.type) ? Number(input.value) : input.value;
       }
       app.refresh(false);

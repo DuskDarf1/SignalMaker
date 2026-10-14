@@ -254,3 +254,65 @@
   color: white;
   border: 1px solid rgba(255, 255, 255, 0.2);
 }
+
+/* Same SignMaker v2.2 icon-picker styles for the street-icon library. */
+#streetIconPicker {
+  border: 0;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 80vw;
+  max-width: 800px;
+  max-height: calc(100dvh - 2rem);
+}
+#streetIconPicker:not([open]) { display: none; }
+#streetIconPicker h3 { margin: 0; }
+#streetIconPicker .iconGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 1rem;
+  max-height: 60vh;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 1rem;
+  background: rgba(var(--baseColor), 0.1);
+}
+#streetIconPicker .iconGridItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  text-align: center;
+  background-color: rgba(128, 128, 128, 0.2);
+  width: auto;
+}
+#streetIconPicker .iconGridItem:hover { background-color: var(--selectedColor); }
+#streetIconPicker .iconGridItem img { width: 3rem; height: 3rem; object-fit: contain; }
+#streetIconSearch { width: 100%; padding: 0.5rem; margin-bottom: 1rem; font-size: 1rem; }
+#streetIconPicker .options {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid black;
+}
+#streetIconPicker .options button { padding: 0.5rem; font-size: 1.25rem; }
+#regulatorySignCurrent { margin: 0.5rem 0; overflow-wrap: anywhere; }
+#streetIconPicker button:focus-visible, #streetIconSearch:focus-visible,
+#regulatorySignChoose:focus-visible { outline: 2px solid var(--textColor); outline-offset: 2px; }
+:root[data-theme="dark"] #streetIconPicker { background-color: rgb(30, 30, 30); color: white; }
+:root[data-theme="dark"] #streetIconPicker .options { border-top-color: rgba(255, 255, 255, 0.2); }
+:root[data-theme="dark"] #streetIconPicker .iconGrid { background: rgba(255, 255, 255, 0.05); }
+:root[data-theme="dark"] #streetIconPicker .iconGridItem { background-color: rgba(255, 255, 255, 0.1); }
+:root[data-theme="dark"] #streetIconPicker .iconGridItem:hover { background-color: var(--selectedColor); }
+:root[data-theme="dark"] #streetIconSearch {
+  background-color: rgb(50, 50, 50);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}

@@ -28,7 +28,7 @@
 
    function createHead(name) {
      return {
-       id: uid(), name, orientation: 'vertical', cluster: false, hawk: false, housingColor: 'black', visor: 'three-quarter',
+       id: uid(), name, orientation: 'vertical', cluster: false, hawk: false, pedestrian: false, pedestrianDisplay: 'hand', housingColor: 'black', visor: 'three-quarter',
        backplate: 'reflective', backplateMargin: 5, reflectiveWidth: 2,
        backplateCorners: 'round', backplateFullRectangle: false, poleMounting: 'side',
        indications: [indication('red'), indication('yellow'), indication('green')],
@@ -62,6 +62,17 @@
    }
 
    function setHeadLayout(head, layout) {
+     if (layout === 'pedestrian') {
+       if (!head.poleMounted) return;
+       head.pedestrian = true;
+       head.cluster = head.hawk = false;
+       head.orientation = 'vertical';
+       head.backplate = 'none';
+       return;
+     }
+     const wasPedestrian = head.pedestrian;
+     head.pedestrian = false;
+     if (wasPedestrian) head.indications = ['red', 'yellow', 'green'].map(color => indication(color));
      if (layout === 'hawk') return setHawk(head, true);
      if (layout === 'linear' && (head.cluster || head.hawk)) {
        head.indications = ['red', 'yellow', 'green'].map(color => indication(color));
@@ -99,6 +110,9 @@
          if (Number.isFinite(head.armPosition)) clean.armPosition = head.armPosition;
          clean.poleMounted = head.poleMounted === true;
          clean.poleMounting = head.poleMounting === 'direct' ? 'direct' : 'side';
+         clean.poleMountSide = ['left', 'right'].includes(head.poleMountSide) ? head.poleMountSide
+           : saved.support?.side === 'left' ? 'left' : 'right';
+         clean.spanPole = head.spanPole === 'right' ? 'right' : 'left';
          clean.poleHeight = Number.isFinite(head.poleHeight) ? head.poleHeight : 120;
          clean.indications = head.indications.map(section => ({
            id: uid(), color: Object.hasOwn(app.colors, section?.color) ? section.color : isWhiteDefaultSymbol(section?.symbol) ? 'white' : 'red',
@@ -109,6 +123,10 @@
          clean.cluster = head.cluster === true && clean.indications.length === 5;
          if (clean.cluster) clean.orientation = 'vertical';
          if (head.hawk === true && clean.indications.length === 3) setHawk(clean, true);
+         if (head.pedestrian === true && clean.poleMounted) {
+           setHeadLayout(clean, 'pedestrian');
+           clean.pedestrianDisplay = head.pedestrianDisplay === 'walk' ? 'walk' : 'hand';
+         }
          if (head.id === saved.selectedId && !restoredSelection) restoredSelection = clean.id;
          return clean;
        });
@@ -161,7 +179,7 @@
      const color = typeof value?.color === 'string' ? value.color.toLowerCase() : '';
      const support = { type: ['mast-arm', 'span-wire'].includes(value?.type) ? value.type : 'none',
        length: Number.isFinite(value?.length) ? Math.max(mast.minLength, Math.min(mast.maxLength, value.length)) : mast.defaultLength,
-       side: value?.side === 'left' ? 'left' : 'right',
+       side: value?.side === 'right' ? 'right' : 'left',
        angle: normalizeMastAngle(value?.angle),
        bowAngle: normalizeMastBowAngle(value?.bowAngle),
        mastHeadAlignment: value?.mastHeadAlignment === 'arm-center' ? 'arm-center' : 'level',
@@ -230,21 +248,23 @@
    }
 
    function armPositionBounds(head, support) {
-     if (head.poleMounted && support.type === 'mast-arm') {
+     if (head.poleMounted && ['mast-arm', 'span-wire'].includes(support.type)) {
        const half = headGeometry(head).height / 2;
-       return { min: half + app.dimensions.mast.baseThickness, max: Math.max(half + app.dimensions.mast.baseThickness, app.dimensions.mast.poleHeight - half) };
+       const height = support.type === 'span-wire' ? support[head.spanPole === 'right' ? 'rightPostHeight' : 'leftPostHeight'] : app.dimensions.mast.poleHeight;
+       const base = support.type === 'span-wire' && support.spanPostMaterial === 'concrete' ? 0 : app.dimensions.mast.baseThickness;
+       return { min: half + base, max: Math.max(half + base, height - half) };
      }
      return supportPositionBounds(headGeometry(head).width, support);
    }
 
    function setArmPosition(head, support, position) {
      const { min, max } = armPositionBounds(head, support);
-     head[head.poleMounted && support.type === 'mast-arm' ? 'poleHeight' : 'armPosition'] = Math.max(min, Math.min(max, position));
+     head[head.poleMounted && ['mast-arm', 'span-wire'].includes(support.type) ? 'poleHeight' : 'armPosition'] = Math.max(min, Math.min(max, position));
    }
 
    function ensureArmPositions(project) {
      project.heads.forEach((head, index) => setArmPosition(head, project.support,
-       head.poleMounted && hasMast(project) ? (head.poleHeight ?? 120) : Number.isFinite(head.armPosition) ? head.armPosition : supportLength(project.support) * (index + 1) / (project.heads.length + 1)));
+       head.poleMounted && hasSupport(project) ? (head.poleHeight ?? 120) : Number.isFinite(head.armPosition) ? head.armPosition : supportLength(project.support) * (index + 1) / (project.heads.length + 1)));
    }
 
    function placeNewHead(project, head) {
@@ -262,7 +282,7 @@
    }
 
    function canSpaceHeadsEvenly(project, start = 0, end = supportLength(project.support)) {
-     const heads = project.heads.filter(head => !hasMast(project) || !head.poleMounted);
+     const heads = project.heads.filter(head => !hasSupport(project) || !head.poleMounted);
      return hasSupport(project) && heads.length > 1
        && heads.reduce((width, head) => width + headGeometry(head).width, 0) <= supportXAtPosition(project.support, end) - supportXAtPosition(project.support, start);
    }
@@ -270,7 +290,7 @@
    function spaceHeadsEvenly(project, start = 0, end = supportLength(project.support)) {
      if (!canSpaceHeadsEvenly(project, start, end)) return false;
      const length = supportLength(project.support);
-     const heads = project.heads.filter(head => !hasMast(project) || !head.poleMounted).map((head, index) => ({ head, width: headGeometry(head).width,
+     const heads = project.heads.filter(head => !hasSupport(project) || !head.poleMounted).map((head, index) => ({ head, width: headGeometry(head).width,
        position: Number.isFinite(head.armPosition) ? head.armPosition : length * (index + 1) / (project.heads.length + 1) }))
        .sort((a, b) => a.position - b.position);
      const gap = (supportXAtPosition(project.support, end) - supportXAtPosition(project.support, start) - heads.reduce((width, item) => width + item.width, 0)) / (heads.length + 1);
@@ -344,6 +364,11 @@
    }
 
    function headGeometry(head) {
+     if (head.pedestrian) {
+       const { width, height } = app.dimensions.pedestrian;
+       return { sections: [], margin: 0, nativeWidth: width, width, height };
+     }
+
      const horizontal = !head.cluster && !head.hawk && head.orientation === 'horizontal';
      const sections = head.indications.map(section => ({ ...app.dimensions.housing[section.size], indication: section }));
      if (head.hawk) {

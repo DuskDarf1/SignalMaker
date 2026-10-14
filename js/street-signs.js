@@ -4,7 +4,7 @@
   const palette = { Green: '#005f4d', Blue: '#00437b', Brown: '#62331e', Yellow: '#fccf34', White: '#ffffff', Black: '#000000', Purple: '#4b0082', Orange: '#ff5904', Red: '#ff0000', 'Fluorescent Pink': '#ff33cc', 'Fluorescent Yellow-Green': '#99ff00' };
   // Exact SVG paths from SignMaker v2.2 img/arrowBlocks (GPL-3.0); originals
   // retained in assets/street-arrows. Rotate only, preserving artwork proportions.
-  const streetArrows = {"TYPE_D": {"width": 641.0, "height": 1044.0, "path": "M202.043,1043.75l237.768,0l4.448,-565.97l128.724,44.095c41.034,13.065 81.846,-31.886 61.828,-63.038l-314.268,-458.837l-314.655,456.427c-21.898,31.636 21.725,77.052 57.952,65.448l137.724,-42.28l0.479,564.155Z"}, "TYPE_A_EXTENDED": {"width": 3405.0, "height": 7346.0, "path": "M1294.18,2338.77l-212.466,5007.07l1243.62,0l-211.68,-5004.06l1102.61,253.101c124.65,32.272 242.847,-96.569 162.077,-219.427l-1582.64,-2330.6c-41.744,-59.945 -152.942,-60.306 -197.97,1.978l-1579.27,2334.9c-60.513,94.642 38.278,241.776 142.951,214.895l1132.77,-257.86l0,0.009Z"}};
+  const streetArrows = {"TYPE_D": {"width": 641.0, "height": 1044.0, "path": "M202.043,1043.75l237.768,0l4.448,-565.97l128.724,44.095c41.034,13.065 81.846,-31.886 61.828,-63.038l-314.268,-458.837l-314.655,456.427c-21.898,31.636 21.725,77.052 57.952,65.448l137.724,-42.28l0.479,564.155Z"}, "TYPE_A": {"width": 2667.0, "height": 4188.0, "path": "M1025.35,1920.47l-91.84,2262.62l799.898,0.24l-91.569,-2262.69l902.465,200.126c119.17,28.112 144.584,-103.048 85.914,-201.067l-1200.25,-1868.46c-65.61,-83.82 -154.946,-54.666 -192.082,-1.317l-1190.48,1844.31c-66.473,106.434 -72.7,256.284 94.122,224.823l883.814,-198.577Z"}};
   const fonts = ['Clearview 1', 'Clearview 2', 'Clearview 3', 'Clearview 4', 'Clearview 5WR', 'Clearview 5', 'Clearview 6', 'Series A', 'Series B', 'Series C', 'Series D', 'Series E', 'Series EM', 'Series F', 'Arial', 'Arial Bold', 'Transport', 'Modern VMS'];
   const fontFiles = {};
   for (const series of ['B', 'C', 'D', 'E', 'EM', 'F']) fontFiles[`Series ${series}`] = `Roadgeek2014Series${series}.woff2`;
@@ -27,13 +27,18 @@
   const signPositionKey = (sign, support) => support.type === 'span-wire' && isRegulatorySign(sign) ? 'spanPosition' : 'armPosition';
   const streetSignPosition = (sign, support) => sign[signPositionKey(sign, support)];
   function createStreetText() {
-    return { id: uid(), textContent: 'Street Name', fontFamily: 'Series EM', fontSize: 200, lineHeight: 75,
-      arrow: 'none', arrowSide: 'left', backgroundColor: 'Inherit', textColor: 'Match BG', spacing: 0, smallCapitals: false, alignment: 'Center', justification: 'Center',
+    return { id: uid(), scriptElements: [], selectedElementIndex: 0, textContent: 'Street Name', fontFamily: 'Series EM', fontSize: 200, lineHeight: 75,
+      arrow: 'none', arrowSize: 100, arrowSide: 'left', backgroundColor: 'Inherit', textColor: 'Match BG', spacing: 0, smallCapitals: false, alignment: 'Center', justification: 'Center',
       useNumeralFormatting: false, numeralFormattingSize: 120, useBannerFormatting: false, bannerFormattingSize: 100, bannerFirstLetterSize: 120 };
+  }
+  const selectedStreetText = row => row.scriptElements?.[(row.selectedElementIndex ?? 0) - 1] ?? row;
+  function createStreetScript(row, script) {
+    return { ...createStreetText(), textContent: 'Bch', scriptSide: 'right',
+      fontFamily: row.fontFamily, fontSize: Math.max(50, row.fontSize * 0.6), textColor: row.textColor, script };
   }
   function createStreetSign(name = 'Street Sign 1') {
     return { id: uid(), name, mounting: 'free-swinging', spanSide: 'right', color: 'Green', corner: 'Sharp', borderRadius: 0,
-      paddingTop: 0.3, paddingRight: 0.75, paddingBottom: 0.3, paddingLeft: 0.75, icon: null, iconSide: 'left',
+      paddingTop: 0.3, paddingRight: 0.75, paddingBottom: 0.3, paddingLeft: 0.75, icon: null, iconSide: 'left', iconBackground: 'Transparent', iconCorners: 'Sharp', iconBackgroundPadding: 0, iconSize: 100, iconSquare: false, iconExtendBackground: false,
       texts: [createStreetText()], selectedTextIndex: 0 };
   }
   function restoreStreetIcon(icon) {
@@ -52,6 +57,32 @@
     const scale = 36 / Math.max(artwork.width, artwork.height);
     return { ...artwork, pixelWidth: artwork.width, pixelHeight: artwork.height,
       width: artwork.width * scale, height: artwork.height * scale };
+  }
+  function restoreStreetText(value, allowScripts = true) {
+        const text = createStreetText();
+        if (typeof value?.textContent === 'string') text.textContent = value.textContent.slice(0, 2000);
+        text.fontFamily = choice(value?.fontFamily, fonts, 'Series EM');
+        text.arrow = choice(value?.arrow === 'TYPE_A_EXTENDED' ? 'TYPE_A' : value?.arrow, ['none', ...Object.keys(streetArrows)], 'none');
+        text.arrowSize = number(value?.arrowSize, 25, 300, 100);
+        text.arrowSide = choice(value?.arrowSide, ['left', 'right'], 'left');
+        text.backgroundColor = choice(value?.backgroundColor, ['Inherit', ...Object.keys(palette)], 'Inherit');
+        text.textColor = choice(value?.textColor, ['Match BG', ...Object.keys(palette)], 'Match BG');
+        for (const key of ['alignment', 'justification']) text[key] = choice(value?.[key], ['Left', 'Center', 'Right'], 'Center');
+        for (const key of ['smallCapitals', 'useNumeralFormatting', 'useBannerFormatting']) text[key] = value?.[key] === true;
+        text.fontSize = number(value?.fontSize, 50, 500, 200);
+        text.lineHeight = number(value?.lineHeight, 0, 300, 75);
+        text.spacing = number(value?.spacing, 0, 20, 0);
+        for (const key of ['numeralFormattingSize', 'bannerFormattingSize', 'bannerFirstLetterSize']) text[key] = number(value?.[key], 50, 150, text[key]);
+        if (allowScripts) {
+          text.scriptElements = (Array.isArray(value?.scriptElements) ? value.scriptElements : []).slice(0, 20).map(raw => {
+            const element = restoreStreetText(raw, false);
+            element.script = raw?.script === 'subscript' ? 'subscript' : 'superscript';
+            element.scriptSide = raw?.scriptSide === 'left' ? 'left' : 'right';
+            return element;
+          });
+          text.selectedElementIndex = number(value?.selectedElementIndex, 0, text.scriptElements.length, 0) | 0;
+        }
+        return text;
   }
   function restoreStreetSigns(project, saved) {
     project.streetSigns = (Array.isArray(saved.streetSigns) ? saved.streetSigns : []).filter(sign => sign && typeof sign === 'object').slice(0, 100).map(raw => {
@@ -74,25 +105,18 @@
       sign.spanSide = raw.spanSide === 'left' ? 'left' : 'right';
       sign.icon = restoreStreetIcon(raw.icon);
       sign.iconSide = raw.iconSide === 'right' ? 'right' : 'left';
+      sign.iconBackground = choice(raw.iconBackground, ['Transparent', ...Object.keys(palette)], 'Transparent');
+      sign.iconCorners = raw.iconCorners === 'Round' ? 'Round' : 'Sharp';
+      sign.iconSize = number(raw.iconSize, 25, 300, 100);
+      sign.iconBackgroundPadding = number(raw.iconBackgroundPadding, 0, 6, 0);
+      sign.iconSquare = raw.iconSquare === true;
+      sign.iconExtendBackground = raw.iconExtendBackground === true;
       sign.borderRadius = number(raw.borderRadius, 0, 5, 0);
       for (const key of ['paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft']) sign[key] = number(raw[key], 0, 20, sign[key]);
       if (Number.isFinite(raw.armPosition)) sign.armPosition = raw.armPosition;
       if (Number.isFinite(raw.spanPosition)) sign.spanPosition = raw.spanPosition;
       sign.texts = (Array.isArray(raw.texts) && raw.texts.length ? raw.texts : [createStreetText()]).slice(0, 50).map(value => {
-        const text = createStreetText();
-        if (typeof value?.textContent === 'string') text.textContent = value.textContent.slice(0, 2000);
-        text.fontFamily = choice(value?.fontFamily, fonts, 'Series EM');
-        text.arrow = choice(value?.arrow, ['none', ...Object.keys(streetArrows)], 'none');
-        text.arrowSide = choice(value?.arrowSide, ['left', 'right'], 'left');
-        text.backgroundColor = choice(value?.backgroundColor, ['Inherit', ...Object.keys(palette)], 'Inherit');
-        text.textColor = choice(value?.textColor, ['Match BG', ...Object.keys(palette)], 'Match BG');
-        for (const key of ['alignment', 'justification']) text[key] = choice(value?.[key], ['Left', 'Center', 'Right'], 'Center');
-        for (const key of ['smallCapitals', 'useNumeralFormatting', 'useBannerFormatting']) text[key] = value?.[key] === true;
-        text.fontSize = number(value?.fontSize, 50, 500, 200);
-        text.lineHeight = number(value?.lineHeight, 0, 300, 75);
-        text.spacing = number(value?.spacing, 0, 20, 0);
-        for (const key of ['numeralFormattingSize', 'bannerFormattingSize', 'bannerFirstLetterSize']) text[key] = number(value?.[key], 50, 150, text[key]);
-        return text;
+        return restoreStreetText(value);
       });
       sign.selectedTextIndex = number(raw.selectedTextIndex, 0, sign.texts.length - 1, 0) | 0;
       if (raw.id === saved.selectedStreetSignId) project.selectedStreetSignId = sign.id;
@@ -143,33 +167,76 @@
       const font = streetFont(text, sign);
       const lines = text.textContent.replace(/\\n/g, '\n').replace(/\\t/g, '\t').split('\n').map(line => textRuns(line, text, font));
       const baseSize = 10.5 * text.fontSize / 100;
+      const mainCap = Math.max(0, ...lines[0].map(run => run.size * (font.startsWith('Series ') ? 0.5690625 : font.startsWith('Clearview ') ? 0.69046875 : 0.7)));
+      const leftScripts = [], rightScripts = [];
+      for (const element of text.scriptElements ?? []) {
+        const scriptFont = streetFont(element, sign);
+        const dy = baseSize * (element.script === 'subscript' ? 0.22 : -0.35);
+        const content = element.textContent.replace(/\\n|\\t|[\r\n\t]/g, ' ');
+        if (content) {
+          const left = element.scriptSide === 'left';
+          const runs = textRuns(left ? content + ' ' : ' ' + content, element, scriptFont)
+            .map(run => ({ ...run, element, font: scriptFont, dy }));
+          (left ? leftScripts : rightScripts).push(...runs);
+        }
+      }
+      lines[0] = [...leftScripts, ...lines[0], ...rightScripts];
+      const capFor = run => run.size * ((run.font ?? font).startsWith('Series ') ? 0.5690625 : (run.font ?? font).startsWith('Clearview ') ? 0.69046875 : 0.7);
+      const scriptAbove = Math.max(0, ...lines[0].filter(run => run.element).map(run => capFor(run) - run.dy - mainCap));
+      const scriptBelow = Math.max(0, ...lines[0].filter(run => run.element).map(run => run.dy + run.size * 0.18));
       const lineHeight = baseSize * (text.lineHeight / 100 + 0.2);
       const artwork = streetArrows[text.arrow];
-      const arrow = artwork ? { ...artwork, length: baseSize * 1.5,
-        thickness: baseSize * 1.5 * artwork.width / artwork.height, gap: baseSize * 0.4 } : null;
+      const arrowLength = baseSize * 1.5 * number(text.arrowSize, 25, 300, 100) / 100;
+      const arrow = artwork ? { ...artwork, length: arrowLength,
+        thickness: arrowLength * artwork.width / artwork.height, gap: baseSize * 0.4 } : null;
       const arrowSpace = arrow ? arrow.length + arrow.gap : 0;
       const width = Math.max(0, ...lines.map(runs => runs.reduce((sum, run) => sum + run.width, 0))) + arrowSpace;
       const rowLineHeight = Math.max(lineHeight, arrow?.thickness ?? 0);
-      return { text, font, lines, width, arrow, arrowSpace, lineHeight: rowLineHeight,
-        height: Math.max(rowLineHeight, ...lines.flat().map(run => run.size * 0.7)) + rowLineHeight * (lines.length - 1) };
+      return { text, font, lines, width, arrow, arrowSpace, mainCap, scriptAbove, scriptBelow, lineHeight: rowLineHeight,
+        height: Math.max(rowLineHeight, ...lines.flat().filter(run => !run.element).map(run => run.size * 0.7)) + scriptAbove + scriptBelow + rowLineHeight * (lines.length - 1) };
     });
     const border = 1.2;
     const textWidth = Math.max(12, ...rows.map(row => row.width + row.text.spacing * 12));
     const contentHeight = rows.reduce((sum, row) => sum + row.height, 0);
     const left = border + sign.paddingLeft * 6;
     const top = border + sign.paddingTop * 6;
+    const padding = sign.icon && (sign.iconExtendBackground || palette[sign.iconBackground])
+      ? number(sign.iconBackgroundPadding, 0, 6, 0) : 0;
+    const iconFactor = number(sign.iconSize, 25, 300, 100) / 100;
+    const iconScale = sign.icon ? contentHeight / Math.max(sign.icon.height, sign.icon.width / 2) * iconFactor : 0;
+    const square = sign.iconSquare || sign.iconExtendBackground;
+    const imageHeight = sign.icon ? square ? contentHeight * iconFactor : sign.icon.height * iconScale : 0;
+    const paddedHeight = Math.max(contentHeight, imageHeight + (sign.icon && !sign.iconExtendBackground ? padding * 2 : 0));
+    const height = paddedHeight + (sign.paddingTop + sign.paddingBottom) * 6 + border * 2;
+    const textY = top + (paddedHeight - contentHeight) / 2;
     let icon = null;
     if (sign.icon) {
-      const scale = contentHeight / Math.max(sign.icon.height, sign.icon.width / 2);
-      const width = sign.icon.width * scale, height = sign.icon.height * scale;
-      icon = { width, height, x: left + (sign.iconSide === 'right' ? textWidth + 4.5 : 0),
-        y: top + (contentHeight - height) / 2 };
+      const width = square ? contentHeight * iconFactor : sign.icon.width * iconScale;
+      const inset = sign.iconExtendBackground ? 0 : padding;
+      icon = { width, height: imageHeight, x: left + inset + (sign.iconSide === 'right' ? textWidth + 4.5 : 0),
+        y: top + (paddedHeight - imageHeight) / 2 };
     }
-    const iconSpace = icon ? icon.width + 4.5 : 0;
-    const textX = left + (icon && sign.iconSide !== 'right' ? iconSpace : 0);
-    const width = textWidth + iconSpace + (sign.paddingLeft + sign.paddingRight) * 6 + border * 2;
-    const height = contentHeight + (sign.paddingTop + sign.paddingBottom) * 6 + border * 2;
-    return { width, height, rows, border, textWidth, textX, icon };
+    const iconSpace = icon ? icon.width + (sign.iconExtendBackground ? 0 : padding * 2) + 4.5 : 0;
+    let textX = left + (icon && sign.iconSide !== 'right' ? iconSpace : 0);
+    let width = textWidth + iconSpace + (sign.paddingLeft + sign.paddingRight) * 6 + border * 2;
+    if (icon && sign.iconExtendBackground) {
+      // Full-height white end blocks remain flush; padding insets the artwork.
+      const right = sign.iconSide === 'right';
+      const endPadding = right ? left : border + sign.paddingRight * 6;
+      width = height + 4.5 + textWidth + endPadding;
+      textX = right ? left : height + 4.5;
+      const x = right ? width - height : 0;
+      icon.background = { x, y: 0, width: height, height, radius: 0, color: '#ffffff' };
+      icon.width = icon.height = Math.max(0.5, contentHeight * iconFactor - padding * 2);
+      icon.x = x + (height - icon.width) / 2;
+      icon.y = (height - icon.height) / 2;
+    } else if (icon && palette[sign.iconBackground]) {
+      const bgWidth = icon.width + padding * 2, bgHeight = icon.height + padding * 2;
+      icon.background = { x: icon.x - padding, y: icon.y - padding, width: bgWidth, height: bgHeight,
+        radius: sign.iconCorners === 'Round' ? Math.min(bgWidth, bgHeight) * 0.12 : 0,
+        color: palette[sign.iconBackground] };
+    }
+    return { width, height, rows, border, textWidth, textX, textY, icon };
   }
   function streetSignBounds(sign, support) {
     return app.supportPositionBounds(streetSignGeometry(sign).width, support);
@@ -199,9 +266,19 @@
     result += `<rect x="${geometry.border / 2}" y="${geometry.border / 2}" width="${geometry.width - geometry.border}" height="${geometry.height - geometry.border}" rx="${Math.max(0, radius - geometry.border / 2)}" fill="none" stroke="${foreground}" stroke-width="${geometry.border}"/>`;
     if (geometry.icon) {
       const { x, y, width, height } = geometry.icon;
-      result += `<image class="streetSignIcon" x="${x}" y="${y}" width="${width}" height="${height}" href="${esc(sign.icon.src)}" preserveAspectRatio="xMidYMid meet"><title>${esc(sign.icon.name)}</title></image>`;
+      const imageRadius = sign.iconCorners === 'Round' && !sign.iconExtendBackground ? Math.min(width, height) * 0.12 : 0;
+      const imageClipId = `street-icon-image-${String(sign.id).replace(/[^a-zA-Z0-9_-]/g, '')}`;
+      if (imageRadius) result += `<defs><clipPath id="${imageClipId}"><rect x="${x}" y="${y}" width="${width}" height="${height}" rx="${imageRadius}"/></clipPath></defs>`;
+      if (geometry.icon.background) {
+        const bg = geometry.icon.background;
+        // Clip full-bleed backgrounds to the panel's outer rounded silhouette.
+        const clipId = `street-icon-panel-${String(sign.id).replace(/[^a-zA-Z0-9_-]/g, '')}`;
+        if (sign.iconExtendBackground) result += `<defs><clipPath id="${clipId}"><rect width="${geometry.width}" height="${geometry.height}" rx="${radius}"/></clipPath></defs>`;
+        result += `<rect class="streetIconBackground" x="${bg.x}" y="${bg.y}" width="${bg.width}" height="${bg.height}" rx="${bg.radius}" fill="${bg.color}"${sign.iconExtendBackground ? ` clip-path="url(#${clipId})"` : ''}/>`;
+      }
+      result += `<image class="streetSignIcon" x="${x}" y="${y}" width="${width}" height="${height}" href="${esc(sign.icon.src)}" preserveAspectRatio="xMidYMid meet"${imageRadius ? ` clip-path="url(#${imageClipId})"` : ''}><title>${esc(sign.icon.name)}</title></image>`;
     }
-    let y = geometry.border + sign.paddingTop * 6;
+    let y = geometry.textY ?? geometry.border + sign.paddingTop * 6;
     for (const row of geometry.rows) {
       const { text, font } = row;
       const available = geometry.textWidth;
@@ -214,8 +291,8 @@
         const width = textWidth + row.arrowSpace;
         let x = start + (text.justification === 'Left' ? 0 : text.justification === 'Right' ? row.width - width : (row.width - width) / 2);
         const cap = font.startsWith('Clearview ') ? 0.69046875 : font.startsWith('Series ') ? 0.5690625 : 0.7;
-        const maxCap = Math.max(0, ...runs.map(run => run.size * cap));
-        const baseline = y + index * row.lineHeight + (row.height - (row.lines.length - 1) * row.lineHeight + maxCap) / 2;
+        const maxCap = Math.max(0, ...runs.filter(run => !run.element).map(run => run.size * cap));
+        const baseline = y + index * row.lineHeight + (row.height - row.scriptAbove - row.scriptBelow - (row.lines.length - 1) * row.lineHeight + maxCap) / 2 + row.scriptAbove;
         if (row.arrow) {
           const arrow = row.arrow;
           const cx = x + (text.arrowSide === 'right' ? textWidth + arrow.gap : 0) + arrow.length / 2;
@@ -224,8 +301,11 @@
           if (text.arrowSide === 'left') x += row.arrowSpace;
         }
         for (const run of runs) {
-          const family = font === 'Arial Bold' ? 'Arial' : font;
-          result += `<text xml:space="preserve" x="${x}" y="${baseline}" font-family="${esc(`"${family}", "Series EM"`)}" font-size="${run.size}"${text.smallCapitals ? ' font-variant="small-caps"' : ''}${font === 'Arial Bold' ? ' font-weight="bold"' : ''} fill="${color}">${esc(run.content)}</text>`;
+          const element = run.element ?? text;
+          const runFont = run.font ?? font;
+          const family = runFont === 'Arial Bold' ? 'Arial' : runFont;
+          const runColor = element.textColor === 'Match BG' ? contrast(element.backgroundColor === 'Inherit' ? sign.color : element.backgroundColor) : palette[element.textColor];
+          result += `<text xml:space="preserve" x="${x}" y="${baseline + (run.dy ?? 0)}" data-script="${run.element?.script ?? 'normal'}" font-family="${esc(`"${family}", "Series EM"`)}" font-size="${run.size}"${element.smallCapitals ? ' font-variant="small-caps"' : ''}${runFont === 'Arial Bold' ? ' font-weight="bold"' : ''} fill="${runColor}">${esc(run.content)}</text>`;
           x += run.width;
         }
       });
@@ -234,7 +314,8 @@
     return result;
   }
   async function embedStreetSignFonts(svg, project) {
-    const used = new Set((project.streetSigns ?? []).filter(sign => !isRegulatorySign(sign)).flatMap(sign => sign.texts.map(text => streetFont(text, sign))));
+    if (app.mastArmProjects) project = { ...project, streetSigns: app.mastArmProjects(project).flatMap(arm => arm.streetSigns ?? []) };
+    const used = new Set((project.streetSigns ?? []).filter(sign => !isRegulatorySign(sign)).flatMap(sign => sign.texts.flatMap(text => [text, ...(text.scriptElements ?? [])].map(element => streetFont(element, sign)))));
     const styles = [...used].filter(font => fontFiles[font]).map(font => {
       const data = app.streetFontData?.[font];
       if (!data) throw new Error('Street sign font unavailable');
@@ -242,7 +323,7 @@
     });
     return styles.length ? svg.replace(/(<svg\b[^>]*>)/, `$1<defs><style>${styles.join('')}</style></defs>`) : svg;
   }
-  Object.assign(app, { streetPalette: palette, streetFonts: fonts, streetFontFiles: fontFiles, createStreetText, createStreetSign,
+  Object.assign(app, { streetPalette: palette, streetFonts: fonts, streetFontFiles: fontFiles, createStreetText, createStreetScript, selectedStreetText, createStreetSign,
     regulatoryDesign, isRegulatorySign, canBlankOut, isBlankOut, signCanMove, streetSignPosition,
-    restoreRegulatoryImage, restoreStreetSigns, streetFont, streetSignGeometry, streetSignBounds, setStreetSignPosition, ensureStreetSignPositions, streetSignMarkup, embedStreetSignFonts });
+    restoreStreetIcon, restoreRegulatoryImage, restoreStreetSigns, streetFont, streetSignGeometry, streetSignBounds, setStreetSignPosition, ensureStreetSignPositions, streetSignMarkup, embedStreetSignFonts });
 })();

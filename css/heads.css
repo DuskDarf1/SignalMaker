@@ -155,8 +155,8 @@ hr { border: 0; border-top: 1px solid rgba(var(--baseColor), 0.45); margin: 0.75
 .headActions button { flex: 1; padding: 0.25rem; }
 .headPopoverHeader { display: flex; align-items: baseline; justify-content: space-between; gap: 0.25rem; width: 100%; }
 .headPopoverHint { font-size: 0.65rem; opacity: 0.8; font-family: inherit; }
-#headList { display: flex; flex-direction: column; gap: 0.2rem; width: 100%; list-style: none; padding: 0 0.15rem 0 0; margin: 0.5rem 0; max-height: 8.5rem; overflow-y: auto; }
-#headList li { flex: 0 0 auto; }
+:is(#headList, #mastArmList) { display: flex; flex-direction: column; gap: 0.2rem; width: 100%; list-style: none; padding: 0 0.15rem 0 0; margin: 0.5rem 0; max-height: 8.5rem; overflow-y: auto; }
+:is(#headList, #mastArmList) li { flex: 0 0 auto; }
 .headListButton {
   display: flex;
   align-items: center;
@@ -261,3 +261,17 @@ button.spacingRangeHandle:enabled:hover { background: #ffec66; }
 .spacingRangeHandle span { display: block; height: 2px; background: #665900; pointer-events: none; }
 .spacingRangeHandle:focus-visible { outline: 3px solid var(--textColor); outline-offset: 3px; }
 .spacingRangeActions p { font-size: 0.75rem; margin: 0 0 0.5rem; }
+
+/* Four compact layout choices retain the inherited square button group. */
+#headLayout button { white-space: normal; }
+
+/* Mast-arm selector uses the inherited panel-selector row and drag styles. */
+.mastSupport [data-select-mast-arm] { pointer-events: visiblePainted; cursor: pointer; }
+.mastSupport [data-select-mast-arm]:focus-visible { outline: 2px solid var(--textColor); }
+
+.mastSupport [data-select-mast-arm] { touch-action: none; cursor: grab; }
+.mastArmVisual { transform-box: fill-box; transform-origin: center; }
+.mastArmVisual.panelWiggle { animation: textEditorBlockWiggle 0.12s ease-in-out infinite alternate; animation-delay: var(--wiggle-delay, 0s); }
+.mastArmVisual.dragging { opacity: 0.5; cursor: grabbing; }
+.mastArmInsertion { position: absolute; width: 0.15rem; background: var(--selectedColor); pointer-events: none; z-index: 5; }
+@media (prefers-reduced-motion: reduce) { .mastArmVisual.panelWiggle { animation: none; } }

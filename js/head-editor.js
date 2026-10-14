@@ -5,6 +5,7 @@
     try { raw = localStorage.getItem('signalmaker-project-v1'); } catch {}
     const project = app.restoreProject(raw);
     app.project = project;
+    app.startMastApproach(project, { showEditor });
     const get = id => document.getElementById(id);
     const form = get('headForm');
     const stage = get('previewStage');
@@ -204,7 +205,7 @@
       const container = get('headContainer');
       if (!container) { stage.style.paddingBottom = '0px'; stage.style.paddingLeft = '0px'; return; }
       if (headDragState || app.streetSignDragging) return;
-      const panel = document.querySelector('.modals > .editor:not([hidden]), #headsMenu:not([hidden])');
+      const panel = document.querySelector('.modals > .editor:not([hidden]), #headsMenu:not([hidden]), #mastArmsMenu:not([hidden])');
       const obstruction = window.innerWidth <= 768 && panel
         ? Math.max(0, stage.getBoundingClientRect().bottom - panel.getBoundingClientRect().top + 12) : 0;
       const leftInset = window.innerWidth > 768 && panel?.classList.contains('editor')
@@ -295,7 +296,7 @@
     }
 
     function moveSpacingEnd(end, position) {
-      const width = project.heads.filter(head => !app.hasMast(project) || !head.poleMounted)
+      const width = project.heads.filter(head => !app.hasSupport(project) || !head.poleMounted)
         .reduce((sum, head) => sum + app.headGeometry(head).width, 0);
       const support = project.support;
       const otherX = app.supportXAtPosition(support, spacingRange[end === 'start' ? 'end' : 'start']);
@@ -355,16 +356,21 @@
       if (!head) return;
       form.querySelectorAll('[data-head-choice]').forEach(button => {
         const field = button.dataset.headChoice;
-        const value = field === 'layout' ? head.hawk ? 'hawk' : head.cluster ? 'cluster' : 'linear' : head[field];
+        const value = field === 'layout' ? head.pedestrian ? 'pedestrian' : head.hawk ? 'hawk' : head.cluster ? 'cluster' : 'linear' : head[field];
         const selected = button.dataset.value === value;
         button.classList.toggle('selected', selected);
         button.setAttribute('aria-pressed', String(selected));
-        button.disabled = field === 'orientation' && (head.cluster || head.hawk);
+        button.disabled = field === 'orientation' && (head.cluster || head.hawk || head.pedestrian)
+          || field === 'layout' && button.dataset.value === 'pedestrian' && !head.poleMounted;
+        if (field === 'layout' && button.dataset.value === 'pedestrian') button.title = head.poleMounted ? 'Pedestrian signal' : 'Only available for supplementary heads';
       });
       for (const [id, field] of [['headBackplateMargin', 'backplateMargin'], ['headReflectiveWidth', 'reflectiveWidth']]) {
         if (document.activeElement !== get(id)) get(id).value = head[field];
         get(`${id}Value`).value = head[field];
       }
+      get('pedestrianDisplayOptions').hidden = !head.pedestrian;
+      indicationList.hidden = Boolean(head.pedestrian);
+      get('addIndication').hidden = Boolean(head.pedestrian);
       // Refresh mounted controls too, so an old disabled state cannot linger.
       head.indications.forEach(section => {
         const color = get(`color-${section.id}`);
@@ -374,20 +380,26 @@
         color.disabled = head.hawk === true;
         color.value = section.color;
       });
-      get('backplateOptions').hidden = head.backplate === 'none';
+      get('headBackplate').closest('.fieldRow').hidden = Boolean(head.pedestrian);
+      get('headOrientation').closest('.fieldRow').hidden = Boolean(head.pedestrian);
+      get('backplateOptions').hidden = head.pedestrian || head.backplate === 'none';
       get('reflectiveOptions').hidden = head.backplate !== 'reflective';
       get('fullBackplateOptions').hidden = !head.hawk && head.indications.length !== 5;
-      get('poleMountingOptions').hidden = !head.poleMounted || !app.hasMast(project);
+      get('spanPoleOptions').hidden = !head.poleMounted || !app.hasSpan(project);
+      get('spanPole').value = head.spanPole ?? 'left';
+      get('poleMountingOptions').hidden = !head.poleMounted || !app.hasSupport(project);
+      get('poleMountSideOptions').hidden = !head.poleMounted || !app.hasSupport(project) || head.poleMounting === 'direct';
+      get('poleMountSide').value = head.poleMountSide ?? (project.support.side === 'left' ? 'left' : 'right');
       get('armPositionOptions').hidden = !app.hasSupport(project);
-      get('armPositionLabel').textContent = head.poleMounted && app.hasMast(project) ? 'Mount Height (ft):' : app.hasSpan(project) ? 'Span Position (ft):' : 'Arm Position (ft):';
+      get('armPositionLabel').textContent = head.poleMounted && app.hasSupport(project) ? 'Mount Height (ft):' : app.hasSpan(project) ? 'Span Position (ft):' : 'Arm Position (ft):';
       if (app.hasSupport(project)) {
         const bounds = app.armPositionBounds(head, project.support);
         for (const id of ['armPosition', 'armPositionValue']) {
           const input = get(id);
           input.min = bounds.min / 12;
           input.max = bounds.max / 12;
-          input.setAttribute('aria-label', head.poleMounted && app.hasMast(project) ? 'Head mounting height above grade in feet' : 'Head position along support in feet');
-          if (document.activeElement !== input) input.value = Number(((head.poleMounted && app.hasMast(project) ? head.poleHeight : head.armPosition) / 12).toFixed(3));
+          input.setAttribute('aria-label', head.poleMounted && app.hasSupport(project) ? 'Head mounting height above grade in feet' : 'Head position along support in feet');
+          if (document.activeElement !== input) input.value = Number(((head.poleMounted && app.hasSupport(project) ? head.poleHeight : head.armPosition) / 12).toFixed(3));
         }
       }
     }
@@ -398,7 +410,7 @@
       get('headEditorEmpty').hidden = Boolean(head);
       if (!head) { get('indicationList').replaceChildren(); return; }
       form.querySelectorAll('[data-head-field]').forEach(input => {
-        const value = input.dataset.headField === 'layout' ? head.hawk ? 'hawk' : head.cluster ? 'cluster' : 'linear'
+        const value = input.dataset.headField === 'layout' ? head.pedestrian ? 'pedestrian' : head.hawk ? 'hawk' : head.cluster ? 'cluster' : 'linear'
           : head[input.dataset.headField];
         if (input.type === 'checkbox') input.checked = value;
         else input.value = value;
@@ -437,7 +449,9 @@
       app.setMastBowPosition(project.support, project.support.bowPosition);
       if (app.hasSupport(project)) app.ensureArmPositions(project);
       app.ensureStreetSignPositions?.(project);
-      try { localStorage.setItem('signalmaker-project-v1', JSON.stringify(project)); } catch {}
+      app.syncMastArms(project);
+      app.updateMastApproachControls();
+      try { localStorage.setItem('signalmaker-project-v1', JSON.stringify(app.projectForStorage?.(project) ?? project)); } catch {}
       headList.innerHTML = project.heads.length ? project.heads.map(head =>
         `<li><button id="select-${head.id}" type="button" class="headListButton${head.id === project.selectedId ? ' active' : ''}" data-select-head="${head.id}" aria-current="${head.id === project.selectedId}" draggable="${project.heads.length > 1}" aria-keyshortcuts="ArrowUp ArrowDown" title="Drag to reorder; arrow keys also move this head"><span>${app.escape(app.displayName(head))}</span></button></li>`).join('') : '<li>No heads yet.</li>';
       for (const id of ['duplicateHead', 'removeHead', 'copy', 'download']) {
@@ -447,7 +461,7 @@
       get('headAlignment').value = project.alignment;
       get('supportKind').value = project.support.type;
       get('mastArmOptions').hidden = !app.hasMast(project);
-      document.querySelectorAll('[data-head-action="add-supplementary"]').forEach(button => { button.hidden = !app.hasMast(project); });
+      document.querySelectorAll('[data-head-action="add-supplementary"]').forEach(button => { button.hidden = !app.hasSupport(project); });
       get('mastHeadAlignment').value = project.support.mastHeadAlignment;
       get('headAlignmentOptions').hidden = app.hasMast(project) && project.support.mastHeadAlignment === 'arm-center';
       for (const id of ['mastArmAngle', 'mastArmAngleValue', 'mastBowAngle', 'mastBowAngleValue']) {
@@ -531,7 +545,7 @@
 
     function addHead(fromMenu = false, supplementary = false) {
       const head = app.createHead(nextHeadName());
-      if (supplementary) { head.poleMounted = true; head.poleHeight = 120; head.poleMounting = 'direct'; }
+      if (supplementary) { head.poleMounted = true; head.poleHeight = 120; head.poleMounting = 'direct'; head.spanPole = 'left'; }
       app.placeNewHead(project, head);
       project.heads.push(head);
       project.selectedId = head.id;
@@ -544,7 +558,7 @@
 
     document.addEventListener('click', event => {
       const action = event.target.closest('[data-head-action]')?.dataset.headAction;
-      if (action === 'add-supplementary' && app.hasMast(project)) return addHead(Boolean(event.target.closest('#headsMenu')), true);
+      if (action === 'add-supplementary' && app.hasSupport(project)) return addHead(Boolean(event.target.closest('#headsMenu')), true);
       if (action === 'add') return addHead(Boolean(event.target.closest('#headsMenu')));
       if (action === 'confirm-spacing') { finishSpacing(true); return; }
       if (action === 'cancel-spacing') { finishSpacing(); return; }
@@ -600,7 +614,7 @@
       } else if (app.hasSupport(project) && ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) {
         event.preventDefault();
         const head = project.heads.find(head => head.id === element.dataset.headId);
-        const pole = head.poleMounted && app.hasMast(project);
+        const pole = head.poleMounted && app.hasSupport(project);
         if (pole ? !['ArrowUp', 'ArrowDown'].includes(event.key) : !['ArrowLeft', 'ArrowRight'].includes(event.key)) return;
         const direction = pole ? (event.key === 'ArrowUp' ? 1 : -1) : (event.key === 'ArrowRight' ? 1 : -1) * (app.hasMast(project) && project.support.side === 'left' ? -1 : 1);
         app.setArmPosition(head, project.support, (pole ? head.poleHeight : head.armPosition) + direction * (event.shiftKey ? 12 : 3));
@@ -644,6 +658,7 @@
         else if (field === 'reflectiveWidth') head[field] = app.normalizeReflectiveWidth(Number(value));
         else head[field] = value;
       } else if (input.dataset.indicationField) {
+        if (head.pedestrian) return;
         if (head.hawk && input.dataset.indicationField !== 'size') return;
         const section = head.indications.find(section => section.id === input.closest('[data-indication-id]').dataset.indicationId);
         if (input.dataset.indicationField === 'symbol') {
@@ -661,7 +676,7 @@
     });
     get('addIndication').addEventListener('click', () => {
       const head = selectedHead();
-      if (!head || head.cluster || head.hawk || head.indications.length >= 5) return;
+      if (!head || head.pedestrian || head.cluster || head.hawk || head.indications.length >= 5) return;
       head.indications.push(app.createIndication('green'));
       refresh();
     });
@@ -767,8 +782,8 @@
           const scale = rect.width / layout.width;
           const x = (clientX - rect.left - headDragState.offsetX) / scale;
           const head = project.heads[headDragState.fromIndex];
-          const position = head.poleMounted && app.hasMast(project)
-            ? app.dimensions.mast.poleHeight + layout.mast.offsetY + (layout.supportOffset?.y ?? 0) - (clientY - rect.top - headDragState.offsetY) / scale
+          const position = head.poleMounted && app.hasSupport(project)
+            ? (layout.span ? layout.span.height : app.dimensions.mast.poleHeight + layout.mast.offsetY) + (layout.supportOffset?.y ?? 0) - (clientY - rect.top - headDragState.offsetY) / scale
             : app.supportPositionAtX(project.support, (layout.reversed ? layout.width - x : x) - layout.supportStart);
           app.setArmPosition(project.heads[headDragState.fromIndex], project.support, Math.round(position / 3) * 3);
         } else {
@@ -1034,7 +1049,7 @@
         const head = selectedHead();
         get(id).value = id.startsWith('armLength') ? project.support.length / 12
           : id.startsWith('spanLength') ? project.support.spanLength / 12
-          : head ? Number(((head.poleMounted && app.hasMast(project) ? head.poleHeight : head.armPosition) / 12).toFixed(3)) : '';
+          : head ? Number(((head.poleMounted && app.hasSupport(project) ? head.poleHeight : head.armPosition) / 12).toFixed(3)) : '';
       });
     }
     for (const id of ['headSpacing', 'headSpacingValue']) {
