@@ -73,3 +73,28 @@ assert.equal(restoredPositioned.streetSigns[0].texts[0].scriptElements[1].script
 delete left.scriptSide;
 assert.equal(app.restoreProject(JSON.stringify(scene)).streetSigns[0].texts[0].scriptElements[0].scriptSide, 'right');
 console.log('Bch defaults, left/right same-row placement and backward-compatible position restoration passed');
+for (const side of ['left', 'right']) {
+  const stacked = app.createStreetSign();
+  const text = stacked.texts[0]; text.textContent = '24th Ave SW';
+  const upper = app.createStreetScript(text, 'superscript'); upper.textContent = 'South'; upper.scriptSide = side;
+  const lower = app.createStreetScript(text, 'subscript'); lower.textContent = '1800'; lower.scriptSide = side;
+  text.scriptElements.push(upper, lower);
+  const layout = app.streetSignGeometry(stacked);
+  const scriptRuns = layout.rows[0].lines[0];
+  const up = scriptRuns.find(run => run.element === upper);
+  const down = scriptRuns.find(run => run.element === lower);
+  assert.equal(up.offsetX, down.offsetX);
+  assert.ok(up.dy < down.dy);
+  assert.ok(layout.rows[0].width < scriptRuns.reduce((width, run) => width + run.width, 0));
+  const svg = app.streetSignMarkup(stacked, layout);
+  const positions = [...svg.matchAll(/<text[^>]*x="([^"]+)" y="([^"]+)" data-script="(superscript|subscript)"/g)];
+  assert.equal(positions.length, 2);
+  assert.equal(positions[0][1], positions[1][1]);
+  assert.ok(Number(positions[0][2]) < Number(positions[1][2]));
+  upper.fontSize = lower.fontSize = 300;
+  const large = app.streetSignGeometry(stacked).rows[0].lines[0];
+  const largeUp = large.find(run => run.element === upper);
+  const largeDown = large.find(run => run.element === lower);
+  assert.ok(largeUp.dy + largeUp.size * 0.18 < largeDown.dy - largeDown.size * 0.5690625);
+}
+console.log('Same-side scripts share one column in preview/export and retain vertical clearance at large sizes');

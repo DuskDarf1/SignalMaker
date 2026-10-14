@@ -157,6 +157,9 @@
     }
     return runs;
   }
+  const streetLineWidth = runs => runs.some(run => Number.isFinite(run.offsetX))
+    ? Math.max(0, ...runs.map(run => run.offsetX + run.width))
+    : runs.reduce((sum, run) => sum + run.width, 0);
   function streetSignGeometry(sign) {
     const regulatory = regulatoryDesign(sign);
     if (regulatory) {
@@ -168,20 +171,42 @@
       const lines = text.textContent.replace(/\\n/g, '\n').replace(/\\t/g, '\t').split('\n').map(line => textRuns(line, text, font));
       const baseSize = 10.5 * text.fontSize / 100;
       const mainCap = Math.max(0, ...lines[0].map(run => run.size * (font.startsWith('Series ') ? 0.5690625 : font.startsWith('Clearview ') ? 0.69046875 : 0.7)));
-      const leftScripts = [], rightScripts = [];
+      // Super/subscripts share a side column, with independent upper and
+      // lower baselines. Reserve the wider lane once rather than adding both.
+      const sides = { left: { superscript: [], subscript: [] }, right: { superscript: [], subscript: [] } };
+      const gap = baseSize * 0.2;
       for (const element of text.scriptElements ?? []) {
         const scriptFont = streetFont(element, sign);
         const dy = baseSize * (element.script === 'subscript' ? 0.22 : -0.35);
         const content = element.textContent.replace(/\\n|\\t|[\r\n\t]/g, ' ');
-        if (content) {
-          const left = element.scriptSide === 'left';
-          const runs = textRuns(left ? content + ' ' : ' ' + content, element, scriptFont)
-            .map(run => ({ ...run, element, font: scriptFont, dy }));
-          (left ? leftScripts : rightScripts).push(...runs);
+        if (!content) continue;
+        const lane = sides[element.scriptSide === 'left' ? 'left' : 'right'][element.script === 'subscript' ? 'subscript' : 'superscript'];
+        const start = lane.length ? streetLineWidth(lane) + gap / 2 : 0;
+        let x = start;
+        for (const run of textRuns(content, element, scriptFont)) {
+          lane.push({ ...run, element, font: scriptFont, dy, offsetX: x });
+          x += run.width;
         }
       }
-      lines[0] = [...leftScripts, ...lines[0], ...rightScripts];
+      const leftWidth = Math.max(streetLineWidth(sides.left.superscript), streetLineWidth(sides.left.subscript));
+      const mainStart = leftWidth ? leftWidth + gap : 0;
+      let mainEnd = mainStart;
+      const mainRuns = lines[0].map(run => { const item = { ...run, offsetX: mainEnd }; mainEnd += run.width; return item; });
+      const leftRuns = [...sides.left.superscript, ...sides.left.subscript];
+      const rightRuns = [...sides.right.superscript, ...sides.right.subscript].map(run => ({ ...run, offsetX: run.offsetX + mainEnd + gap }));
+      lines[0] = [...leftRuns, ...mainRuns, ...rightRuns];
       const capFor = run => run.size * ((run.font ?? font).startsWith('Series ') ? 0.5690625 : (run.font ?? font).startsWith('Clearview ') ? 0.69046875 : 0.7);
+      for (const side of ['left', 'right']) {
+        const scripts = lines[0].filter(run => run.element && (run.element.scriptSide === 'left' ? 'left' : 'right') === side);
+        const upper = scripts.filter(run => run.element.script !== 'subscript');
+        const lower = scripts.filter(run => run.element.script === 'subscript');
+        if (upper.length && lower.length) {
+          const upperBottom = Math.max(...upper.map(run => run.dy + run.size * 0.18));
+          const lowerTop = Math.min(...lower.map(run => run.dy - capFor(run)));
+          const clearance = Math.max(0, upperBottom + baseSize * 0.08 - lowerTop);
+          lower.forEach(run => { run.dy += clearance; });
+        }
+      }
       const scriptAbove = Math.max(0, ...lines[0].filter(run => run.element).map(run => capFor(run) - run.dy - mainCap));
       const scriptBelow = Math.max(0, ...lines[0].filter(run => run.element).map(run => run.dy + run.size * 0.18));
       const lineHeight = baseSize * (text.lineHeight / 100 + 0.2);
@@ -190,7 +215,7 @@
       const arrow = artwork ? { ...artwork, length: arrowLength,
         thickness: arrowLength * artwork.width / artwork.height, gap: baseSize * 0.4 } : null;
       const arrowSpace = arrow ? arrow.length + arrow.gap : 0;
-      const width = Math.max(0, ...lines.map(runs => runs.reduce((sum, run) => sum + run.width, 0))) + arrowSpace;
+      const width = Math.max(0, ...lines.map(streetLineWidth)) + arrowSpace;
       const rowLineHeight = Math.max(lineHeight, arrow?.thickness ?? 0);
       return { text, font, lines, width, arrow, arrowSpace, mainCap, scriptAbove, scriptBelow, lineHeight: rowLineHeight,
         height: Math.max(rowLineHeight, ...lines.flat().filter(run => !run.element).map(run => run.size * 0.7)) + scriptAbove + scriptBelow + rowLineHeight * (lines.length - 1) };
@@ -287,7 +312,7 @@
       const color = text.textColor === 'Match BG' ? contrast(text.backgroundColor === 'Inherit' ? sign.color : text.backgroundColor) : palette[text.textColor];
       if (text.backgroundColor !== 'Inherit') result += `<rect x="${start}" y="${y}" width="${row.width}" height="${row.height}" fill="${palette[text.backgroundColor]}"/>`;
       row.lines.forEach((runs, index) => {
-        const textWidth = runs.reduce((sum, run) => sum + run.width, 0);
+        const textWidth = streetLineWidth(runs);
         const width = textWidth + row.arrowSpace;
         let x = start + (text.justification === 'Left' ? 0 : text.justification === 'Right' ? row.width - width : (row.width - width) / 2);
         const cap = font.startsWith('Clearview ') ? 0.69046875 : font.startsWith('Series ') ? 0.5690625 : 0.7;
@@ -300,12 +325,14 @@
           result += `<g class="streetTextArrow" transform="translate(${cx} ${cy}) rotate(${text.arrowSide === 'right' ? 90 : -90}) scale(${arrow.length / arrow.height}) translate(${-arrow.width / 2} ${-arrow.height / 2})" fill="${color}" fill-rule="evenodd" stroke-linejoin="round"><path d="${arrow.path}"/></g>`;
           if (text.arrowSide === 'left') x += row.arrowSpace;
         }
+        const lineX = x;
         for (const run of runs) {
+          const runX = Number.isFinite(run.offsetX) ? lineX + run.offsetX : x;
           const element = run.element ?? text;
           const runFont = run.font ?? font;
           const family = runFont === 'Arial Bold' ? 'Arial' : runFont;
           const runColor = element.textColor === 'Match BG' ? contrast(element.backgroundColor === 'Inherit' ? sign.color : element.backgroundColor) : palette[element.textColor];
-          result += `<text xml:space="preserve" x="${x}" y="${baseline + (run.dy ?? 0)}" data-script="${run.element?.script ?? 'normal'}" font-family="${esc(`"${family}", "Series EM"`)}" font-size="${run.size}"${element.smallCapitals ? ' font-variant="small-caps"' : ''}${runFont === 'Arial Bold' ? ' font-weight="bold"' : ''} fill="${runColor}">${esc(run.content)}</text>`;
+          result += `<text xml:space="preserve" x="${runX}" y="${baseline + (run.dy ?? 0)}" data-script="${run.element?.script ?? 'normal'}" font-family="${esc(`"${family}", "Series EM"`)}" font-size="${run.size}"${element.smallCapitals ? ' font-variant="small-caps"' : ''}${runFont === 'Arial Bold' ? ' font-weight="bold"' : ''} fill="${runColor}">${esc(run.content)}</text>`;
           x += run.width;
         }
       });

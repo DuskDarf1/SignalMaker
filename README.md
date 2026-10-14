@@ -117,3 +117,7 @@ default). Scaling retains artwork proportions and reserves space in the sign.
 Type A uses SignMaker v2.2’s original `img/arrowBlocks/TYPE_A.svg` vector; saved
 Type A Extended choices migrate to Type A. Sizes survive restoration,
 duplication, templates and PNG export.
+
+Superscripts and subscripts on the same side share one column: superscripts
+above subscripts, with the column sized to the wider line. Opposite-side
+placement remains independent; preview and PNG use the same layout.
