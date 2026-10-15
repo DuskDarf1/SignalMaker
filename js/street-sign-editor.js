@@ -84,7 +84,7 @@
         <p id="blankoutAvailability" hidden>Blank-out is available for No Left Turn, No Right Turn, No Turn on Red, and Yield to Pedestrians.</p>
         ${select('regulatorySignDisplay', 'Display:', 'display', [['on', 'On'], ['off', 'Off']])}
       </div>
-      ${select('streetSignMounting', 'Mounting:', 'mounting', [['free-swinging', 'Free swinging'], ['direct', 'Directly mounted']])}
+      ${select('streetSignMounting', 'Mounting:', 'mounting', [['free-swinging', 'Free swinging'], ['direct', 'Mast arm mounted'], ['mast', 'Mast mounted']])}
       ${select('streetSignSpanSide', 'Signal Pole:', 'spanSide', [['left', 'Left'], ['right', 'Right']])}
       <div id="streetSignPositionOptions" class="fieldRow"><label for="streetSignPosition">Arm Position (ft):</label><div class="dimensionInputs"><input id="streetSignPosition" type="range" step="any" aria-label="Street sign position along mast arm in feet" /><input id="streetSignPositionValue" type="number" step="any" aria-label="Street sign position along mast arm in feet" /></div></div>
       <div id="streetSignAppearance"><hr />
@@ -116,6 +116,7 @@
       <div class="streetTextProperties">${controlTemplate}</div>
       <div class="fieldRow"><label for="streetText_arrowSize">Arrow Size (%):</label><div class="dimensionInputs"><input id="streetText_arrowSize" type="range" min="25" max="300" step="5" value="100" data-text-field="arrowSize" aria-label="Arrow size percent"/><input id="streetText_arrowSizeValue" type="number" min="25" max="300" step="5" value="100" data-text-field="arrowSize" aria-label="Arrow size percent"/></div></div></div>`;
     form.addEventListener('submit', event => event.preventDefault());
+    const mountingPicker = app.createNativeSelectPicker(get('streetSignMounting'), 'Mounting');
     const properties = form.querySelector('[data-property="sdCtrlText"]');
     [...properties.querySelectorAll('label')].forEach(label => {
       const row = document.createElement('div');
@@ -144,6 +145,32 @@
     const textChoices = { fontFamily: app.streetFonts, backgroundColor: ['Inherit', ...Object.keys(app.streetPalette)],
       textColor: ['Match BG', ...Object.keys(app.streetPalette)], alignment: ['Left', 'Center', 'Right'], justification: ['Left', 'Center', 'Right'] };
     for (const [key, values] of Object.entries(textChoices)) get(`streetText_${key}`).innerHTML = options(values);
+    // Retain the native palette order and values, with SignMaker's swatches.
+    const colorForValue = value => {
+      const sign = selected();
+      if (value === 'Inherit') return app.streetPalette[sign?.color];
+      if (value === 'Match BG' && sign) {
+        const text = app.selectedStreetText(sign.texts[sign.selectedTextIndex]);
+        const background = text.backgroundColor === 'Inherit' ? sign.color : text.backgroundColor;
+        return ['White', 'Yellow', 'Orange', 'Fluorescent Pink', 'Fluorescent Yellow-Green'].includes(background) ? '#000000' : '#ffffff';
+      }
+      return app.streetPalette[value];
+    };
+    const colorPickers = [
+      ['streetPanelColor', 'Panel color'], ['streetIconBackground', 'Icon background color'],
+      ['streetText_backgroundColor', 'Text background color'], ['streetText_textColor', 'Text color'],
+    ].map(([id, label]) => app.createNativeSelectPicker(get(id), label, { colorForValue, minMenuWidth: 230 }));
+    const fontPicker = app.createNativeSelectPicker(get('streetText_fontFamily'), 'Font', {
+      minMenuWidth: 230,
+      // SignMaker previews Clearview's B/W variants against the menu theme,
+      // and enlarges Highway Gothic names to account for their cap height.
+      textStyleForValue: value => {
+        const background = document.documentElement.dataset.theme === 'light' ? 'White' : 'Black';
+        const font = app.streetFont({ fontFamily: value || 'Series EM', backgroundColor: background }, { color: background });
+        return { fontFamily: `"${font}", sans-serif`, fontSize: value?.startsWith('Series ') ? '120%' : '100%' };
+      },
+    });
+    new MutationObserver(() => fontPicker.sync()).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
     get('streetText_lineHeightVal').min = 0;
     get('streetText_lineHeightVal').max = 300;
     get('streetText_lineHeightVal').step = 1;
@@ -189,6 +216,8 @@
               delete sign.regulatoryImage;
             }
             app.refresh(false);
+// in #sm-links
+// in #sm-links
           }
           picker.close();
         });
@@ -223,7 +252,7 @@
       form.hidden = !sign;
       get('streetSignsEmpty').hidden = Boolean(sign);
       for (const id of ['duplicateStreetSign', 'removeStreetSign']) get(id).disabled = !sign;
-      if (!sign) return;
+      if (!sign) { mountingPicker.close(); fontPicker.close(); colorPickers.forEach(picker => picker.close()); return; }
       lastSelection[regulatoryMode ? 'regulatory' : 'street'] = sign.id;
       const span = app.hasSpan(project);
       const regulatory = app.isRegulatorySign(sign);
@@ -244,9 +273,11 @@
         if (document.activeElement !== input) input.value = span && input.dataset.streetField === 'mounting' ? 'free-swinging' : sign[input.dataset.streetField] ?? ({ signType: 'static', display: 'on' }[input.dataset.streetField] ?? '');
       });
       get('streetSignMounting').disabled = span;
+      mountingPicker.sync();
       get('streetSignSpanSide').parentElement.hidden = !span || regulatory;
       get('streetSignPositionOptions').hidden = !app.signCanMove(sign, project.support);
-      get('streetSignPositionOptions').querySelector('label').textContent = span ? 'Span Position (ft):' : 'Arm Position (ft):';
+      const poleMounted = app.isMastMountedSign(sign, project.support);
+      get('streetSignPositionOptions').querySelector('label').textContent = poleMounted ? 'Mast Height (ft):' : span ? 'Span Position (ft):' : 'Arm Position (ft):';
       get('streetIconStyleOptions').hidden = !sign.icon;
       get('streetIconPadding').disabled = get('streetIconPaddingValue').disabled = !sign.iconExtendBackground && sign.iconBackground === 'Transparent';
       get('streetIconBackground').disabled = get('streetIconCorners').disabled = get('streetIconSquare').disabled = Boolean(sign.iconExtendBackground);
@@ -258,7 +289,7 @@
           const input = get(id);
           input.min = bounds.min / 12;
           input.max = bounds.max / 12;
-          input.setAttribute('aria-label', `Sign position along ${span ? 'span wire' : 'mast arm'} in feet`);
+          input.setAttribute('aria-label', poleMounted ? 'Sign center height above the mast base in feet' : `Sign position along ${span ? 'span wire' : 'mast arm'} in feet`);
           if (document.activeElement !== input) input.value = Number((app.streetSignPosition(sign, project.support) / 12).toFixed(3));
         }
       }
@@ -268,7 +299,7 @@
         loadedFonts.add(font);
         document.fonts?.load(`21px "${font}"`).then(() => { if (!drag) app.refresh(false); }).catch(() => {});
       }
-      if (regulatory) return;
+      if (regulatory) { fontPicker.close(); colorPickers.forEach(picker => picker.close()); return; }
       const row = sign.texts[sign.selectedTextIndex];
       const text = app.selectedStreetText(row);
       const elementSelect = get('streetElementSelection');
@@ -294,6 +325,8 @@
       if (list.innerHTML !== rows) list.innerHTML = rows;
       list.value = sign.selectedTextIndex;
       get('streetTextSelectionRow').hidden = sign.texts.length <= 1;
+      colorPickers.forEach(picker => picker.sync());
+      fontPicker.sync();
     }
     function flash(id) {
       const element = stage.querySelector(`[data-street-sign-id="${id}"]`);
@@ -542,9 +575,12 @@
       if (!element) return;
       if (['Enter', ' '].includes(event.key)) { event.preventDefault(); element.click(); }
       const sign = project.streetSigns.find(item => item.id === element.dataset.streetSignId);
-      if (!['ArrowLeft', 'ArrowRight'].includes(event.key) || !app.signCanMove(sign, project.support)) return;
+      if (!sign || !app.signCanMove(sign, project.support)) return;
+      const poleMounted = app.isMastMountedSign(sign, project.support);
+      if (!(poleMounted ? ['ArrowUp', 'ArrowDown'] : ['ArrowLeft', 'ArrowRight']).includes(event.key)) return;
       event.preventDefault();
-      const direction = (event.key === 'ArrowRight' ? 1 : -1) * (app.hasMast(project) && project.support.side === 'left' ? -1 : 1);
+      const direction = poleMounted ? event.key === 'ArrowUp' ? 1 : -1
+        : (event.key === 'ArrowRight' ? 1 : -1) * (app.hasMast(project) && project.support.side === 'left' ? -1 : 1);
       app.setStreetSignPosition(sign, project.support, app.streetSignPosition(sign, project.support) + direction * (event.shiftKey ? 12 : 3));
       app.refresh(false);
       stage.querySelector(`[data-street-sign-id="${sign.id}"]`)?.focus({ preventScroll: true });
@@ -554,13 +590,16 @@
       const sign = project.streetSigns.find(item => item.id === element?.dataset.streetSignId);
       if (!sign || !app.signCanMove(sign, project.support) || event.button !== 0) return;
       const rect = element.getBoundingClientRect();
-      drag = { element, id: element.dataset.streetSignId, pointerId: event.pointerId, x: event.clientX, y: event.clientY, rect, layout: app.scene(project), containerRect: get('headContainer').getBoundingClientRect() };
+      drag = { element, id: element.dataset.streetSignId, pointerId: event.pointerId, x: event.clientX, y: event.clientY, rect,
+        vertical: app.isMastMountedSign(sign, project.support), position: app.streetSignPosition(sign, project.support),
+        layout: app.scene(project), containerRect: get('headContainer').getBoundingClientRect() };
       element.setPointerCapture(event.pointerId);
     });
     stage.addEventListener('pointermove', event => {
       if (!drag || drag.pointerId !== event.pointerId) return;
       const dx = event.clientX - drag.x;
-      if (!drag.ghost && Math.abs(dx) < 6) return;
+      const dy = event.clientY - drag.y;
+      if (!drag.ghost && Math.abs(drag.vertical ? dy : dx) < 6) return;
       event.preventDefault();
       if (!drag.ghost) {
         app.streetSignDragging = true;
@@ -577,7 +616,8 @@
         Object.assign(drag.ghost.style, { top: `${drag.rect.top}px`, width: `${drag.rect.width}px`, height: `${drag.rect.height}px` });
         document.body.append(drag.ghost);
       }
-      drag.ghost.style.left = `${drag.rect.left + dx}px`;
+      drag.ghost.style.left = `${drag.rect.left + (drag.vertical ? 0 : dx)}px`;
+      drag.ghost.style.top = `${drag.rect.top + (drag.vertical ? dy : 0)}px`;
     });
     function finishDrag(event, cancelled = false) {
       if (!drag || drag.pointerId !== event.pointerId) return;
@@ -588,9 +628,9 @@
         state.ghost.remove();
         if (!cancelled) {
           const scale = state.containerRect.width / state.layout.width;
-          const center = (state.rect.left + state.rect.width / 2 + event.clientX - state.x - state.containerRect.left) / scale;
-          const position = app.supportPositionAtX(project.support, (state.layout.reversed ? state.layout.width - center : center) - state.layout.supportStart);
-          app.setStreetSignPosition(project.streetSigns.find(item => item.id === state.id), project.support, position);
+          const sign = project.streetSigns.find(item => item.id === state.id);
+          const position = app.streetSignDragPosition(sign, project.support, state.position, event.clientX - state.x, event.clientY - state.y, scale);
+          app.setStreetSignPosition(sign, project.support, position);
         }
         suppressClickUntil = Date.now() + 250;
       }

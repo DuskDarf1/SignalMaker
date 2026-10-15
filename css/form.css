@@ -85,7 +85,8 @@ button {
 
 /* SignMaker custom dropdown appearance and 0.16-second menu/caret motion. */
 .symbolPicker { position: relative; width: 100%; min-width: 0; }
-.editorContent .symbolPickerTrigger {
+.editorContent .symbolPickerTrigger,
+.editorContent .nativeSelectTrigger {
   position: relative;
   width: 100%;
   min-width: 0;
@@ -100,7 +101,8 @@ button {
   font-weight: 400;
   line-height: 1.25;
 }
-.editorContent .symbolPickerTrigger:hover:enabled { background: rgb(var(--inputColor)); }
+.editorContent .symbolPickerTrigger:hover:enabled,
+.editorContent .nativeSelectTrigger:hover:enabled { background: rgb(var(--inputColor)); }
 .symbolPickerLabel { position: relative; z-index: 2; flex: 1; min-width: 0; padding-block: 0.04rem; line-height: 1.25; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .symbolPickerIcon {
   display: inline-flex;
@@ -177,6 +179,27 @@ button {
 :root[data-theme="dark"] .symbolPickerItem.active,
 :root[data-theme="dark"] .symbolPickerItem.selected { color: #fff; }
 .symbolPickerCheck { flex: 0 0 0.75rem; margin-left: auto; }
+/* SignMaker v2.2's square color previews, separate from inverted symbol icons. */
+.colorPickerSwatch {
+  flex: 0 0 auto;
+  display: inline-block;
+  box-sizing: border-box;
+  width: 0.85em;
+  height: 0.85em;
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  background: transparent;
+  background-clip: padding-box;
+}
+.nativeSelectTrigger .colorPickerSwatch { width: 1em; height: 1em; }
+:root[data-theme="light"] .colorPickerSwatch { border-color: rgba(0, 0, 0, 0.75); }
+.colorPickerSwatch.specialColorSwatch {
+  background:
+    linear-gradient(45deg, transparent 0 42%, currentColor 42% 58%, transparent 58% 100%),
+    linear-gradient(45deg, rgba(255,255,255,0.3) 25%, transparent 25% 75%, rgba(255,255,255,0.3) 75%),
+    linear-gradient(45deg, rgba(255,255,255,0.3) 25%, transparent 25% 75%, rgba(255,255,255,0.3) 75%);
+  background-position: 0 0, 0 0, 0.25rem 0.25rem;
+  background-size: auto, 0.5rem 0.5rem, 0.5rem 0.5rem;
+}
 @media (prefers-reduced-motion: reduce) {
   .symbolPickerMenu, .symbolPickerCaret { transition: none; }
 }
@@ -193,6 +216,8 @@ button {
   background: var(--hotbarColor);
   border: 1px solid rgba(var(--baseColor), 0.4);
   list-style: none;
+/* in #sm-links */
+/* in #sm-links */
 }
 .copyPanelContextMenu li { margin: 0; padding: 0; }
 .copyPanelContextMenu button {

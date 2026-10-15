@@ -5,9 +5,9 @@
   // Exact SVG paths from SignMaker v2.2 img/arrowBlocks (GPL-3.0); originals
   // retained in assets/street-arrows. Rotate only, preserving artwork proportions.
   const streetArrows = {"TYPE_D": {"width": 641.0, "height": 1044.0, "path": "M202.043,1043.75l237.768,0l4.448,-565.97l128.724,44.095c41.034,13.065 81.846,-31.886 61.828,-63.038l-314.268,-458.837l-314.655,456.427c-21.898,31.636 21.725,77.052 57.952,65.448l137.724,-42.28l0.479,564.155Z"}, "TYPE_A": {"width": 2667.0, "height": 4188.0, "path": "M1025.35,1920.47l-91.84,2262.62l799.898,0.24l-91.569,-2262.69l902.465,200.126c119.17,28.112 144.584,-103.048 85.914,-201.067l-1200.25,-1868.46c-65.61,-83.82 -154.946,-54.666 -192.082,-1.317l-1190.48,1844.31c-66.473,106.434 -72.7,256.284 94.122,224.823l883.814,-198.577Z"}};
-  const fonts = ['Clearview 1', 'Clearview 2', 'Clearview 3', 'Clearview 4', 'Clearview 5WR', 'Clearview 5', 'Clearview 6', 'Series A', 'Series B', 'Series C', 'Series D', 'Series E', 'Series EM', 'Series F', 'Arial', 'Arial Bold', 'Transport', 'Modern VMS'];
+  const fonts = ['Clearview 1', 'Clearview 2', 'Clearview 3', 'Clearview 4', 'Clearview 5WR', 'Clearview 5', 'Clearview 6', 'Series B', 'Series C', 'Series D', 'Series E', 'Series EEM', 'Series EM', 'Series F', 'Arial', 'Arial Bold', 'Transport', 'Modern VMS'];
   const fontFiles = {};
-  for (const series of ['B', 'C', 'D', 'E', 'EM', 'F']) fontFiles[`Series ${series}`] = `Roadgeek2014Series${series}.woff2`;
+  for (const series of ['B', 'C', 'D', 'E', 'EEM', 'EM', 'F']) fontFiles[`Series ${series}`] = `Roadgeek2014Series${series}.woff2`;
   ['One', 'Two', 'Three', 'Four', 'Five', 'Six'].forEach((word, index) => {
     for (const variant of ['B', 'W']) fontFiles[`Clearview ${index + 1}${variant}`] = `ClearviewHwy-${word}-${variant}.woff2`;
   });
@@ -24,7 +24,9 @@
   const canBlankOut = sign => !sign.regulatoryImage && Boolean(app.regulatoryBlankoutData?.[sign.regulatoryCode]);
   const isBlankOut = sign => sign.signType === 'blank-out' && canBlankOut(sign);
   const signCanMove = (sign, support) => support.type === 'mast-arm' || support.type === 'span-wire' && isRegulatorySign(sign);
-  const signPositionKey = (sign, support) => support.type === 'span-wire' && isRegulatorySign(sign) ? 'spanPosition' : 'armPosition';
+  const isMastMountedSign = (sign, support) => support.type === 'mast-arm' && sign.mounting === 'mast';
+  const signPositionKey = (sign, support) => isMastMountedSign(sign, support) ? 'poleHeight'
+    : support.type === 'span-wire' && isRegulatorySign(sign) ? 'spanPosition' : 'armPosition';
   const streetSignPosition = (sign, support) => sign[signPositionKey(sign, support)];
   function createStreetText() {
     return { id: uid(), scriptElements: [], selectedElementIndex: 0, textContent: 'Street Name', fontFamily: 'Series EM', fontSize: 200, lineHeight: 75,
@@ -101,7 +103,7 @@
       }
       sign.color = choice(raw.color, Object.keys(palette), 'Green');
       sign.corner = choice(raw.corner, ['Sharp', 'Round'], 'Sharp');
-      sign.mounting = choice(raw.mounting, ['free-swinging', 'direct'], 'free-swinging');
+      sign.mounting = choice(raw.mounting, ['free-swinging', 'direct', 'mast'], 'free-swinging');
       sign.spanSide = raw.spanSide === 'left' ? 'left' : 'right';
       sign.icon = restoreStreetIcon(raw.icon);
       sign.iconSide = raw.iconSide === 'right' ? 'right' : 'left';
@@ -115,6 +117,7 @@
       for (const key of ['paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft']) sign[key] = number(raw[key], 0, 20, sign[key]);
       if (Number.isFinite(raw.armPosition)) sign.armPosition = raw.armPosition;
       if (Number.isFinite(raw.spanPosition)) sign.spanPosition = raw.spanPosition;
+      if (Number.isFinite(raw.poleHeight)) sign.poleHeight = raw.poleHeight;
       sign.texts = (Array.isArray(raw.texts) && raw.texts.length ? raw.texts : [createStreetText()]).slice(0, 50).map(value => {
         return restoreStreetText(value);
       });
@@ -213,6 +216,8 @@
       const artwork = streetArrows[text.arrow];
       const arrowLength = baseSize * 1.5 * number(text.arrowSize, 25, 300, 100) / 100;
       const arrow = artwork ? { ...artwork, length: arrowLength,
+// in #sm-links
+// in #sm-links
         thickness: arrowLength * artwork.width / artwork.height, gap: baseSize * 0.4 } : null;
       const arrowSpace = arrow ? arrow.length + arrow.gap : 0;
       const width = Math.max(0, ...lines.map(streetLineWidth)) + arrowSpace;
@@ -264,6 +269,15 @@
     return { width, height, rows, border, textWidth, textX, textY, icon };
   }
   function streetSignBounds(sign, support) {
+    if (isMastMountedSign(sign, support)) {
+      const halfHeight = streetSignGeometry(sign).height / 2;
+      // Schematic pole mount: keep the sign's top two inches below the
+      // arm-connection plate and its bottom above the mast base plate.
+      const top = app.dimensions.mast.armHeight - app.mastGeometry(support).connectionHeight / 2 - 2;
+      const bottom = app.dimensions.mast.baseThickness;
+      const min = bottom + halfHeight, max = top - halfHeight;
+      return min <= max ? { min, max } : { min: (top + bottom) / 2, max: (top + bottom) / 2 };
+    }
     return app.supportPositionBounds(streetSignGeometry(sign).width, support);
   }
   function setStreetSignPosition(sign, support, value) {
@@ -273,7 +287,14 @@
   }
   function ensureStreetSignPositions(project) {
     (project.streetSigns ?? []).forEach((sign, index) => setStreetSignPosition(sign, project.support,
-      streetSignPosition(sign, project.support) ?? Math.min(96 + index * 60, app.supportLength(project.support) / 2)));
+      streetSignPosition(sign, project.support) ?? (isMastMountedSign(sign, project.support)
+        ? streetSignBounds(sign, project.support).max : Math.min(96 + index * 60, app.supportLength(project.support) / 2))));
+  }
+  function streetSignDragPosition(sign, support, position, dx, dy, scale) {
+    if (!sign || !Number.isFinite(position) || !Number.isFinite(scale) || scale <= 0) return position;
+    if (isMastMountedSign(sign, support)) return position - dy / scale;
+    const direction = support.type === 'mast-arm' && support.side === 'left' ? -1 : 1;
+    return app.supportPositionAtX(support, app.supportXAtPosition(support, position) + direction * dx / scale);
   }
   function streetSignMarkup(sign, geometry) {
     const esc = app.escape;
@@ -351,6 +372,6 @@
     return styles.length ? svg.replace(/(<svg\b[^>]*>)/, `$1<defs><style>${styles.join('')}</style></defs>`) : svg;
   }
   Object.assign(app, { streetPalette: palette, streetFonts: fonts, streetFontFiles: fontFiles, createStreetText, createStreetScript, selectedStreetText, createStreetSign,
-    regulatoryDesign, isRegulatorySign, canBlankOut, isBlankOut, signCanMove, streetSignPosition,
+    regulatoryDesign, isRegulatorySign, canBlankOut, isBlankOut, signCanMove, isMastMountedSign, streetSignPosition, streetSignDragPosition,
     restoreStreetIcon, restoreRegulatoryImage, restoreStreetSigns, streetFont, streetSignGeometry, streetSignBounds, setStreetSignPosition, ensureStreetSignPositions, streetSignMarkup, embedStreetSignFonts });
 })();

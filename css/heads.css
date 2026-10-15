@@ -216,6 +216,8 @@ hr { border: 0; border-top: 1px solid rgba(var(--baseColor), 0.45); margin: 0.75
 @media (max-width: 768px) {
   #workspace { padding: 1rem 0.5rem 4rem; }
   #headEditor { width: 100%; }
+/* in #sm-links */
+/* in #sm-links */
   .editorContent { max-height: 42dvh; }
   .fieldRow > label { flex-basis: 8rem; }
   .headsMenu { max-height: 55dvh; }

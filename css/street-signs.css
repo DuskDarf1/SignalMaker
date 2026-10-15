@@ -1,7 +1,8 @@
 /* SignMaker v2.2 font faces (GPL-3.0). */
+
 @font-face {
-  font-family: "Series E";
-  src: url("../fonts/Roadgeek2014SeriesE.woff2");
+  font-family: "Series B";
+  src: url("../fonts/Roadgeek2014SeriesB.woff2");
   font-weight: normal;
   font-style: normal;
   font-display: swap;
@@ -16,14 +17,6 @@
 }
 
 @font-face {
-  font-family: "Series B";
-  src: url("../fonts/Roadgeek2014SeriesB.woff2");
-  font-weight: normal;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
   font-family: "Series D";
   src: url("../fonts/Roadgeek2014SeriesD.woff2");
   font-weight: normal;
@@ -32,8 +25,16 @@
 }
 
 @font-face {
-  font-family: "Series F";
-  src: url("../fonts/Roadgeek2014SeriesF.woff2");
+  font-family: "Series E";
+  src: url("../fonts/Roadgeek2014SeriesE.woff2");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Series EEM";
+  src: url("../fonts/Roadgeek2014SeriesEEM.woff2");
   font-weight: normal;
   font-style: normal;
   font-display: swap;
@@ -48,16 +49,32 @@
 }
 
 @font-face {
-  font-family: "Clearview 2B";
-  src: url("../fonts/ClearviewHwy-Two-B.woff2");
+  font-family: "Series F";
+  src: url("../fonts/Roadgeek2014SeriesF.woff2");
   font-weight: normal;
   font-style: normal;
   font-display: swap;
 }
 
 @font-face {
-  font-family: "Clearview 3B";
-  src: url("../fonts/ClearviewHwy-Three-B.woff2");
+  font-family: "Clearview 1B";
+  src: url("../fonts/ClearviewHwy-One-B.woff2");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Clearview 1W";
+  src: url("../fonts/ClearviewHwy-One-W.woff2");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Clearview 2B";
+  src: url("../fonts/ClearviewHwy-Two-B.woff2");
   font-weight: normal;
   font-style: normal;
   font-display: swap;
@@ -72,8 +89,8 @@
 }
 
 @font-face {
-  font-family: "Clearview 4W";
-  src: url("../fonts/ClearviewHwy-Four-W.woff2");
+  font-family: "Clearview 3B";
+  src: url("../fonts/ClearviewHwy-Three-B.woff2");
   font-weight: normal;
   font-style: normal;
   font-display: swap;
@@ -90,6 +107,14 @@
 @font-face {
   font-family: "Clearview 4B";
   src: url("../fonts/ClearviewHwy-Four-B.woff2");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Clearview 4W";
+  src: url("../fonts/ClearviewHwy-Four-W.woff2");
   font-weight: normal;
   font-style: normal;
   font-display: swap;
@@ -130,22 +155,6 @@
 @font-face {
   font-family: "Clearview 6W";
   src: url("../fonts/ClearviewHwy-Six-W.woff2");
-  font-weight: normal;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "Clearview 1B";
-  src: url("../fonts/ClearviewHwy-One-B.woff2");
-  font-weight: normal;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "Clearview 1W";
-  src: url("../fonts/ClearviewHwy-One-W.woff2");
   font-weight: normal;
   font-style: normal;
   font-display: swap;
@@ -208,6 +217,8 @@
 #regulatorySignPicker h3 { margin: 0; }
 #regulatorySignPicker .iconGrid {
   display: grid;
+/* in #sm-links */
+/* in #sm-links */
   grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
   gap: 1rem;
   max-height: 60vh;

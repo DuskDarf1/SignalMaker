@@ -216,6 +216,8 @@
     for (const [id, editor] of [['templatesSavedTab', false], ['templateEditTab', true], ['templateReturnEditor', true]]) get(id).addEventListener('click', () => tab(editor));
     for (const id of ['templatesSavedTab', 'templateEditTab']) get(id).addEventListener('keydown', event => {
       if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+// in #sm-links
+// in #sm-links
       event.preventDefault(); const editor = event.key === 'End' || event.key === 'ArrowRight'; tab(editor); get(editor ? 'templateEditTab' : 'templatesSavedTab').focus();
     });
     const fonts = '<option value="">Current fonts</option>' + app.streetFonts.map(font => `<option>${app.escape(font)}</option>`).join('');
