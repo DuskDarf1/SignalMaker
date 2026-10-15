@@ -239,7 +239,7 @@
         button.textContent = app.displayName(head);
         button.addEventListener('click', () => {
           closeCopyMenu(true);
-          copySignal({ ...project, support: { ...project.support, type: 'none' }, heads: [head], streetSigns: [] });
+          copySignal({ ...project, mastArms: [], activeMastArm: 0, support: { ...project.support, type: 'none' }, heads: [head], streetSigns: [] });
         });
         item.append(button);
         copyMenu.append(item);

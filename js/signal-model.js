@@ -28,7 +28,7 @@
 
   function createHead(name) {
     return {
-      id: uid(), name, orientation: 'vertical', cluster: false, hawk: false, pedestrian: false, pedestrianDisplay: 'hand', housingColor: 'black', visor: 'three-quarter',
+      id: uid(), name, orientation: 'vertical', cluster: false, fourCluster: null, dad: false, hawk: false, pedestrian: false, pedestrianDisplay: 'hand', housingColor: 'black', visor: 'three-quarter',
       backplate: 'reflective', backplateMargin: 5, reflectiveWidth: 2,
       backplateCorners: 'round', backplateFullRectangle: false, poleMounting: 'side',
       indications: [indication('red'), indication('yellow'), indication('green')],
@@ -36,7 +36,7 @@
   }
 
   function setCluster(head, enabled) {
-    if (enabled) { head.orientation = 'vertical'; head.hawk = false; }
+    if (enabled) { head.orientation = 'vertical'; head.dad = false; head.hawk = false; head.fourCluster = null; }
     if (enabled && head.indications.length === 3) {
       const [red, yellow, green] = head.indications;
       head.indications = [red, indication('yellow', 'left', yellow.size), yellow,
@@ -54,6 +54,8 @@
     head.hawk = enabled;
     if (!enabled) return;
     head.cluster = false;
+    head.dad = false;
+    head.fourCluster = null;
     head.orientation = 'vertical';
     const colors = ['red', 'red', 'yellow'];
     head.indications = colors.map((color, index) => ({
@@ -61,7 +63,36 @@
     }));
   }
 
-  function setHeadLayout(head, layout) {
+  function setFourCluster(head, side) {
+    head.fourCluster = side;
+    head.cluster = head.hawk = head.pedestrian = false;
+    head.orientation = 'vertical';
+    if (head.indications.length === 3) {
+      const [red, yellow, green] = head.indications;
+      head.indications = side === 'below'
+        ? [red, yellow, indication('green', 'left', green.size), green]
+        : [indication('red', 'left', red.size), red, yellow, green];
+    }
+    while (head.indications.length < 4) head.indications.push(indication('green'));
+    head.indications = head.indications.slice(0, 4);
+  }
+  function setDad(head) {
+    head.dad = true;
+    head.cluster = head.hawk = head.pedestrian = false;
+    head.fourCluster = null;
+    head.orientation = 'vertical';
+    head.indications = ['ball', 'left', 'right'].map((symbol, index) => ({
+      ...(head.indications[index] ?? indication()), color: index ? 'yellow' : 'red', symbol,
+    }));
+  }
+  function setHeadLayout(head, layout, support) {
+    if (layout === 'pedestrian' && support?.type === 'pedestal') head.poleMounted = true;
+    if (layout === 'dad') return setDad(head);
+    const wasDad = head.dad;
+    head.dad = false;
+    if (wasDad) head.indications = ['red', 'yellow', 'green'].map(color => indication(color));
+    if (layout === 'cluster-below' || layout === 'cluster-above') return setFourCluster(head, layout === 'cluster-below' ? 'below' : 'above');
+    head.fourCluster = null;
     if (layout === 'pedestrian') {
       if (!head.poleMounted) return;
       head.pedestrian = true;
@@ -109,7 +140,8 @@
         clean.backplateFullRectangle = head.backplateFullRectangle === true;
         if (Number.isFinite(head.armPosition)) clean.armPosition = head.armPosition;
         clean.poleMounted = head.poleMounted === true;
-        clean.poleMounting = head.poleMounting === 'direct' ? 'direct' : 'side';
+        if (Number.isFinite(head.pedestalPosition)) clean.pedestalPosition = head.pedestalPosition;
+        clean.poleMounting = ['direct', 'top'].includes(head.poleMounting) ? 'direct' : 'side';
         clean.poleMountSide = ['left', 'right'].includes(head.poleMountSide) ? head.poleMountSide
           : saved.support?.side === 'left' ? 'left' : 'right';
         clean.spanPole = head.spanPole === 'right' ? 'right' : 'left';
@@ -122,7 +154,9 @@
         clean.indications.forEach(section => setIndicationSymbol(section, section.symbol));
         clean.cluster = head.cluster === true && clean.indications.length === 5;
         if (clean.cluster) clean.orientation = 'vertical';
+        if (['above', 'below'].includes(head.fourCluster)) setFourCluster(clean, head.fourCluster);
         if (head.hawk === true && clean.indications.length === 3) setHawk(clean, true);
+        if (head.dad === true) setDad(clean);
         if (head.pedestrian === true && clean.poleMounted) {
           setHeadLayout(clean, 'pedestrian');
           clean.pedestrianDisplay = head.pedestrianDisplay === 'walk' ? 'walk' : 'hand';
@@ -177,12 +211,13 @@
     const span = app.dimensions.span;
     const number = (key, min, max, fallback) => Number.isFinite(value?.[key]) ? Math.max(min, Math.min(max, value[key])) : fallback;
     const color = typeof value?.color === 'string' ? value.color.toLowerCase() : '';
-    const support = { type: ['mast-arm', 'span-wire'].includes(value?.type) ? value.type : 'none',
+    const support = { type: ['mast-arm', 'span-wire', 'pedestal'].includes(value?.type) ? value.type : 'none',
       length: Number.isFinite(value?.length) ? Math.max(mast.minLength, Math.min(mast.maxLength, value.length)) : mast.defaultLength,
       side: value?.side === 'right' ? 'right' : 'left',
       angle: normalizeMastAngle(value?.angle),
       bowAngle: normalizeMastBowAngle(value?.bowAngle),
       mastHeadAlignment: value?.mastHeadAlignment === 'arm-center' ? 'arm-center' : 'level',
+      pedestalHeight: number('pedestalHeight', 48, 240, 120),
       spanLength: number('spanLength', span.minLength, span.maxLength, span.defaultLength),
       spanPostMaterial: value?.spanPostMaterial === 'concrete' ? 'concrete' : 'steel',
       leftPostHeight: number('leftPostHeight', span.minPostHeight, span.maxPostHeight, span.defaultPostHeight),
@@ -197,8 +232,11 @@
 
   const hasMast = project => project.support?.type === 'mast-arm';
   const hasSpan = project => project.support?.type === 'span-wire';
-  const hasSupport = project => hasMast(project) || hasSpan(project);
-  const hasDrawing = project => hasSupport(project) || project.heads.length > 0 || project.streetSigns?.length > 0;
+  const hasPedestal = project => project.support?.type === 'pedestal';
+  const hasSupport = project => hasMast(project) || hasSpan(project) || hasPedestal(project);
+  const headPosition = (head, support) => support.type === 'pedestal' ? head.pedestalPosition : head.poleMounted ? head.poleHeight : head.armPosition;
+  const hasDrawing = project => hasSupport(project) || project.heads.length > 0 || project.streetSigns?.length > 0
+    || Boolean(project.mastArms?.some(arm => ['mast-arm', 'span-wire', 'pedestal'].includes(arm.support?.type) || arm.heads?.length || arm.streetSigns?.length));
   const supportLength = support => support.type === 'span-wire' ? support.spanLength : support.length;
   function mastCurve(support) {
     const angle = normalizeMastAngle(support.angle);
@@ -250,6 +288,19 @@
   }
 
   function armPositionBounds(head, support) {
+    if (support.type === 'pedestal') {
+      const half = headGeometry(head).height / 2;
+      if ((head.poleMounted || head.pedestrian) && head.poleMounting === 'direct') {
+        // Rear mounting may overlap the capped pole by two inches. This lets
+        // the housing conceal its top entirely without a post-top fitter.
+        return { min: half + 16, max: Math.max(half + 16, support.pedestalHeight + half - 2) };
+      }
+      // Primary heads sit above the capped pole on a schematic 6-inch fitter.
+      // Supplementary and pedestrian heads use adjustable pole bands/brackets.
+      return head.poleMounted || head.pedestrian
+        ? { min: half + 16, max: Math.max(half + 16, support.pedestalHeight - half) }
+        : { min: half + 16, max: support.pedestalHeight + 6 + half };
+    }
     if (head.poleMounted && ['mast-arm', 'span-wire'].includes(support.type)) {
       const half = headGeometry(head).height / 2;
       const height = support.type === 'span-wire' ? support[head.spanPole === 'right' ? 'rightPostHeight' : 'leftPostHeight'] : app.dimensions.mast.poleHeight;
@@ -261,16 +312,31 @@
 
   function setArmPosition(head, support, position) {
     const { min, max } = armPositionBounds(head, support);
-    head[head.poleMounted && ['mast-arm', 'span-wire'].includes(support.type) ? 'poleHeight' : 'armPosition'] = Math.max(min, Math.min(max, position));
+    head[support.type === 'pedestal' ? 'pedestalPosition' : head.poleMounted && ['mast-arm', 'span-wire'].includes(support.type) ? 'poleHeight' : 'armPosition'] = Math.max(min, Math.min(max, position));
   }
 
   function ensureArmPositions(project) {
     project.heads.forEach((head, index) => setArmPosition(head, project.support,
-      head.poleMounted && hasSupport(project) ? (head.poleHeight ?? 120) : Number.isFinite(head.armPosition) ? head.armPosition : supportLength(project.support) * (index + 1) / (project.heads.length + 1)));
+      hasPedestal(project) ? (head.pedestalPosition ?? armPositionBounds(head, project.support).max) : head.poleMounted && hasSupport(project) ? (head.poleHeight ?? 120) : Number.isFinite(head.armPosition) ? head.armPosition : supportLength(project.support) * (index + 1) / (project.heads.length + 1)));
+  }
+
+  function setPedestalHeight(project, height) {
+    if (!Number.isFinite(height)) return;
+    const next = Math.max(48, Math.min(240, height));
+    const previous = project.support.pedestalHeight;
+    // A head above the pole cap travels with its top fitter. Pole-mounted
+    // accessories keep their own heights, clamping only when outside the pole.
+    project.heads.filter(head => !head.poleMounted && !head.pedestrian && head.pedestalPosition > previous)
+      .forEach(head => { head.pedestalPosition += next - previous; });
+    project.support.pedestalHeight = next;
+    if (hasPedestal(project)) {
+      ensureArmPositions(project);
+      app.ensureStreetSignPositions(project);
+    }
   }
 
   function placeNewHead(project, head) {
-    if (!hasSupport(project) || head.poleMounted) return;
+    if (!hasSupport(project) || hasPedestal(project) || head.poleMounted) return;
     const { min, max } = armPositionBounds(head, project.support);
     const positions = project.heads.filter(other => !other.poleMounted && other !== head && Number.isFinite(other.armPosition))
       .map(other => Math.max(min, Math.min(max, other.armPosition))).sort((a, b) => a - b);
@@ -285,7 +351,7 @@
 
   function canSpaceHeadsEvenly(project, start = 0, end = supportLength(project.support)) {
     const heads = project.heads.filter(head => !hasSupport(project) || !head.poleMounted);
-    return hasSupport(project) && heads.length > 1
+    return hasSupport(project) && !hasPedestal(project) && heads.length > 1
       && heads.reduce((width, head) => width + headGeometry(head).width, 0) <= supportXAtPosition(project.support, end) - supportXAtPosition(project.support, start);
   }
 
@@ -371,9 +437,20 @@
       return { sections: [], margin: 0, nativeWidth: width, width, height };
     }
 
-    const horizontal = !head.cluster && !head.hawk && head.orientation === 'horizontal';
+    const horizontal = !head.cluster && !head.fourCluster && !head.dad && !head.hawk && head.orientation === 'horizontal';
     const sections = head.indications.map(section => ({ ...app.dimensions.housing[section.size], indication: section }));
-    if (head.hawk) {
+    if (head.dad) {
+      // DAD: a centered circular red above paired yellow left/right arrows.
+      // TTI 0-7096-R2, Figures 38, 40 and 43 (US 83 field installation):
+      // https://static.tti.tamu.edu/tti.tamu.edu/documents/0-7096-R2.pdf
+      const rowHeight = Math.max(sections[1].height, sections[2].height);
+      const pairWidth = sections[1].width + sections[2].width;
+      sections[0].x = -sections[0].width / 2;
+      sections[0].y = 0;
+      sections[1].x = -pairWidth / 2;
+      sections[2].x = sections[1].x + sections[1].width;
+      for (const section of sections.slice(1)) section.y = sections[0].height + (rowHeight - section.height) / 2;
+    } else if (head.hawk) {
       const rowHeight = Math.max(sections[0].height, sections[1].height);
       const redSpacing = (sections[0].width + sections[1].width) / 2;
       sections[0].x = -redSpacing / 2 - sections[0].width / 2;
@@ -381,6 +458,20 @@
       for (let index = 0; index < 2; index++) sections[index].y = (rowHeight - sections[index].height) / 2;
       sections[2].x = -sections[2].width / 2;
       sections[2].y = rowHeight;
+    } else if (head.fourCluster) {
+      // Four physical sections: a two-wide row above/below two centered rows.
+      // Mixed lens sizes share the pair's centerline and retain clear housings.
+      const below = head.fourCluster === 'below';
+      const pair = below ? sections.slice(2) : sections.slice(0, 2);
+      const stem = below ? sections.slice(0, 2) : sections.slice(2);
+      const pairHeight = Math.max(...pair.map(section => section.height));
+      const center = (pair[1].width - pair[0].width) / 2;
+      let y = below ? 0 : pairHeight;
+      stem.forEach(section => { section.x = center - section.width / 2; section.y = y; y += section.height; });
+      pair.forEach((section, index) => {
+        section.x = index === 0 ? -section.width : 0;
+        section.y = (below ? y : 0) + (pairHeight - section.height) / 2;
+      });
     } else if (head.cluster) {
       const leftWidth = Math.max(sections[1].width, sections[3].width);
       const rightWidth = Math.max(sections[2].width, sections[4].width);
@@ -493,7 +584,7 @@
     const rounded = head.backplateCorners === 'round';
     inset = Math.max(0, Math.min(geometry.margin, inset));
     return platePath(geometry.sections, geometry.margin - inset, {
-      rectangular: (head.hawk || head.indications.length === 5) && head.backplateFullRectangle === true,
+      rectangular: (head.dad || head.hawk || head.fourCluster || head.indications.length === 5) && head.backplateFullRectangle === true,
       radius: rounded ? Math.max(0, 2 - inset) : 0,
     });
   }
@@ -541,7 +632,7 @@
   }
 
   Object.assign(app, { createHead, createIndication: indication, isBusSymbol, isWhiteDefaultSymbol, indicationColors, normalizePlateMargin, normalizeReflectiveWidth, trianglePoints, setIndicationSymbol, setCluster, setHawk, setHeadLayout, moveItem, restoreProject, normalizeAlignment,
-    normalizeMastAngle, normalizeMastBowAngle, mastBowWidth, setMastBowWidth, mastBowBounds, setMastBowPosition, normalizeSupport, hasMast, hasSpan, hasSupport, hasDrawing, supportLength,
+    normalizeMastAngle, normalizeMastBowAngle, mastBowWidth, setMastBowWidth, mastBowBounds, setMastBowPosition, normalizeSupport, hasMast, hasSpan, hasPedestal, headPosition, setPedestalHeight, hasSupport, hasDrawing, supportLength,
     mastCurve, supportXAtPosition, supportPositionAtX, supportProjectedLength, supportPositionBounds,
     armPositionBounds, setArmPosition, ensureArmPositions, placeNewHead, canSpaceHeadsEvenly, spaceHeadsEvenly, mastGeometry, spanGeometry,
     headGeometry, platePath, backplatePath, arrowPoints, symbolDimensions,

@@ -67,7 +67,7 @@
       const height = section.nativeHeight;
       const face = section.faceWidth;
       const inset = (width - face) / 2;
-      const transform = !head.cluster && !head.hawk && head.orientation === 'horizontal'
+      const transform = !head.cluster && !head.fourCluster && !head.dad && !head.hawk && head.orientation === 'horizontal'
         ? `translate(${section.x} ${section.y + section.height}) rotate(-90)` : `translate(${section.x} ${section.y})`;
       markup += `<g transform="${transform}">
         <rect x="${inset}" y="0" width="${face}" height="${height}" rx="0.65" fill="${color}" stroke="#151618" stroke-width="0.12"/>
@@ -89,6 +89,20 @@
   }
 
   function headScene(project) {
+    if (app.hasPedestal(project)) {
+      const height = project.support.pedestalHeight;
+      const poleX = 48;
+      const heads = project.heads.map(head => {
+        const geometry = app.headGeometry(head);
+        const bounds = app.armPositionBounds(head, project.support);
+        const position = Math.max(bounds.min, Math.min(bounds.max, head.pedestalPosition ?? bounds.max));
+        const side = head.poleMountSide === 'left' ? -1 : 1;
+        const sideMounted = (head.poleMounted || head.pedestrian) && head.poleMounting === 'side';
+        const center = poleX + (sideMounted ? side * (2.25 + 6 + geometry.width / 2) : 0);
+        return { head, geometry, x: center - geometry.width / 2, y: height - position - geometry.height / 2 };
+      });
+      return { heads, pedestal: { height, poleX }, width: 96, height };
+    }
     if (app.hasMast(project)) {
       const mast = app.mastGeometry(project.support);
       const heads = project.heads.map(head => ({ head, geometry: app.headGeometry(head) }));
@@ -101,7 +115,7 @@
           const mirrored = project.support.side === 'left';
           const bracketSide = item.head.poleMountSide ?? (mirrored ? 'left' : 'right');
           const direction = (bracketSide === 'left' ? -1 : 1) * (mirrored ? -1 : 1);
-          const x = item.head.poleMounting === 'direct' ? mast.poleX
+          const x = item.head.poleMounting !== 'side' ? mast.poleX
             : mast.poleX + direction * (mast.poleDiameter / 2 + 6 + item.geometry.width / 2);
           item.x = (project.support.side === 'left' ? mast.width - x : x) - item.geometry.width / 2;
           item.y = app.dimensions.mast.poleHeight - height - item.geometry.height / 2;
@@ -136,7 +150,7 @@
           const direction = item.head.poleMountSide === 'left' ? -1 : 1;
           const bounds = app.armPositionBounds(item.head, project.support);
           const height = Math.max(bounds.min, Math.min(bounds.max, item.head.poleHeight ?? 120));
-          item.x = poleX - item.geometry.width / 2 + (item.head.poleMounting === 'direct' ? 0 : direction * (poleWidth / 2 + 6 + item.geometry.width / 2));
+          item.x = poleX - item.geometry.width / 2 + (item.head.poleMounting !== 'side' ? 0 : direction * (poleWidth / 2 + 6 + item.geometry.width / 2));
           item.y = span.height - height - item.geometry.height / 2;
           return;
         }
@@ -174,9 +188,16 @@
     let freeX = project.heads.length ? layout.width + project.spacing : 0;
     signs.forEach(item => {
       const { sign, geometry } = item;
-      if (layout.mast) {
+      if (layout.pedestal) {
+        const bounds = app.streetSignBounds(sign, project.support);
+        const position = Math.max(bounds.min, Math.min(bounds.max, sign.pedestalPosition ?? bounds.max));
+        item.poleX = layout.pedestal.poleX;
+        item.x = item.poleX - geometry.width / 2;
+        item.y = layout.pedestal.height - position - geometry.height / 2;
+        item.mounting = 'pedestal';
+      } else if (layout.mast) {
         const mast = layout.mast;
-        if (app.isMastMountedSign(sign, project.support)) {
+        if (app.isPoleMountedSign(sign, project.support)) {
           const bounds = app.streetSignBounds(sign, project.support);
           const height = Math.max(bounds.min, Math.min(bounds.max, sign.poleHeight ?? bounds.max));
           item.poleX = layout.reversed ? mast.width - mast.poleX : mast.poleX;
@@ -235,11 +256,14 @@
       }
     });
     layout.streetSigns = signs;
-    if (!signs.length && !layout.mast && !layout.heads.some(item => item.head.poleMounted)) return layout;
+    if (!signs.length && !layout.pedestal && !layout.mast && !layout.heads.some(item => item.head.poleMounted)) return layout;
     const envelopes = [...layout.heads, ...signs];
     // Reserve both side-bracket envelopes even for direct mounting, so
     // changing a pole head's mount does not change the assembly fit scale.
-    const poleEnvelopes = layout.mast ? layout.heads.filter(item => item.head.poleMounted).map(item => {
+    const poleEnvelopes = layout.pedestal ? layout.heads.filter(item => item.head.poleMounted || item.head.pedestrian).map(item => {
+      const reach = 2.25 + 6 + item.geometry.width;
+      return { left: layout.pedestal.poleX - reach, right: layout.pedestal.poleX + reach };
+    }) : layout.mast ? layout.heads.filter(item => item.head.poleMounted).map(item => {
       const mast = layout.mast;
       const poleX = layout.reversed ? mast.width - mast.poleX : mast.poleX;
       const reach = mast.poleDiameter / 2 + 6 + item.geometry.width;
@@ -268,18 +292,29 @@
     return layout;
   }
 
+  // Reference pole and grade in each local layout. A span contributes both
+  // posts; spacing to the next assembly starts at its right post.
+  function supportAnchor(layout) {
+    const offset = layout.supportOffset ?? { x: 0, y: 0 };
+    if (layout.mast) return { x: (layout.reversed ? layout.mast.width - layout.mast.poleX : layout.mast.poleX) + offset.x,
+      grade: app.dimensions.mast.poleHeight + layout.mast.offsetY + offset.y, span: 0 };
+    if (layout.span) return { x: layout.span.leftX + offset.x, grade: layout.span.height + offset.y,
+      span: layout.span.rightX - layout.span.leftX };
+    if (layout.pedestal) return { x: layout.pedestal.poleX + offset.x, grade: layout.pedestal.height + offset.y, span: 0 };
+    return { x: layout.width / 2, grade: layout.height, span: 0 };
+  }
+
   function scene(project) {
     const projects = app.mastArmProjects?.(project) ?? [project];
     if (projects.length < 2) return singleScene(project);
-    // Place pole centers at physical approach distances and align all poles
-    // to the same grade, even when individual arms have different slopes/bows.
     const spacing = project.mastArmSpacing ?? 720;
+    let nextPole = 0;
     const assemblies = projects.map((assembly, index) => {
       const layout = singleScene(assembly);
-      const poleX = (layout.reversed ? layout.mast.width - layout.mast.poleX : layout.mast.poleX)
-        + (layout.supportOffset?.x ?? 0);
-      return { project: assembly, layout, index, x: index * spacing - poleX,
-        y: -layout.mast.offsetY - (layout.supportOffset?.y ?? 0) };
+      const anchor = supportAnchor(layout);
+      const item = { project: assembly, layout, index, x: nextPole - anchor.x, y: -anchor.grade };
+      nextPole += anchor.span + spacing;
+      return item;
     });
     const left = Math.min(...assemblies.map(item => item.x));
     const top = Math.min(...assemblies.map(item => item.y));
@@ -290,11 +325,11 @@
     const active = selected.layout;
     return { ...active, assemblies, width, height,
       supportOffset: { x: selected.x + (active.supportOffset?.x ?? 0), y: selected.y + (active.supportOffset?.y ?? 0) },
-      supportStart: active.reversed ? width - selected.x - active.width + active.supportStart : selected.x + active.supportStart,
+      supportStart: active.supportStart == null ? undefined : active.reversed ? width - selected.x - active.width + active.supportStart : selected.x + active.supportStart,
       heads: assemblies.flatMap(item => item.layout.heads.map(head => ({ ...head,
-        x: head.x + item.x, y: head.y + item.y, mastArmIndex: item.index }))),
+        x: head.x + item.x, y: head.y + item.y, mastArmIndex: item.index, assemblySupport: item.project.support }))),
       streetSigns: assemblies.flatMap(item => item.layout.streetSigns.map(sign => ({ ...sign,
-        x: sign.x + item.x, y: sign.y + item.y, mastArmIndex: item.index }))),
+        x: sign.x + item.x, y: sign.y + item.y, mastArmIndex: item.index, assemblySupport: item.project.support }))),
     };
   }
 
@@ -354,6 +389,31 @@
 
   function rawSupportMarkup(project, layout) {
     const color = project.support?.color;
+    if (layout.pedestal) {
+      // FDOT 646-001 / Specification 646: nominal 4-inch Schedule 40 aluminum
+      // pole (4.5-inch OD), cap and transformer base. The 15 x 16-inch base,
+      // brackets and 6-inch top fitter are schematic, not shop drawings.
+      // https://fdotwww.blob.core.windows.net/sitefinity/docs/default-source/design/standardplans/2027/idx/646-001.pdf
+      // https://www.fdot.gov/docs/default-source/programmanagement/Implemented/WorkBooks/History/Jan16/Files/6460000.FHWA.pdf
+      const { height: h, poleX: x } = layout.pedestal;
+      const ox = layout.supportOffset?.x ?? 0, oy = layout.supportOffset?.y ?? 0;
+      return `<g class="pedestalPole" fill="${app.escape(color)}">
+        <rect x="${x - 2.25}" y="0" width="4.5" height="${h - 16}"/>
+        <rect x="${x - 2.25}" y="0" width="1.2" height="${h - 16}" fill="${tone(color, 0.2)}"/>
+        <rect x="${x + 1}" y="0" width="1.25" height="${h - 16}" fill="${tone(color, -0.25)}"/>
+        <ellipse cx="${x}" cy="0" rx="2.5" ry="0.6" fill="${tone(color, 0.2)}"/>
+        <path d="M${x - 3} ${h - 16} H${x + 3} L${x + 7.5} ${h - 2} H${x - 7.5} Z"/>
+        <path d="M${x + 1} ${h - 16} H${x + 3} L${x + 7.5} ${h - 2} H${x + 4} Z" fill="${tone(color, -0.25)}"/>
+        <rect x="${x - 8}" y="${h - 2}" width="16" height="2"/>
+        ${layout.heads.map(item => {
+          const cx = item.x + item.geometry.width / 2 - ox;
+          const cy = item.y + item.geometry.height / 2 - oy;
+          const bottom = item.y + item.geometry.height - oy;
+          if (bottom < 0) return `<rect class="pedestalTopFitter" x="${x - 0.75}" y="${bottom}" width="1.5" height="${-bottom}"/>`;
+          return [-0.3, 0.3].map(f => `<path class="pedestalHeadBracket" d="M${x - 2.75} ${cy + item.geometry.height * f} H${cx}" fill="none" stroke="${app.escape(color)}" stroke-width="2"/>`).join('');
+        }).join('')}
+      </g>`;
+    }
     if (layout.span) {
       const span = layout.span;
       const support = project.support;
@@ -381,7 +441,7 @@
           const right = item.head.spanPole === 'right';
           const poleX = right ? span.rightX : span.leftX;
           const width = support[right ? 'rightPostWidth' : 'leftPostWidth'];
-          const extension = item.head.poleMounting === 'direct' ? 0 : 9;
+          const extension = item.head.poleMounting !== 'side' ? 0 : 9;
           const x = poleX - width / 2 - (item.head.poleMountSide === 'left' ? extension : 0);
           const center = item.y + item.geometry.height / 2 - (layout.supportOffset?.y ?? 0);
           return [-1, 1].map(side => `<rect class="spanPoleSignalMount" x="${x}" y="${center + side * item.geometry.height * 0.3 - 1}" width="${width + extension}" height="2" fill="${color}"/>`).join('');
@@ -418,11 +478,11 @@
       ${layout.heads.filter(item => item.head.poleMounted).map(item => {
         const centerY = item.y + item.geometry.height / 2 - mast.offsetY - (layout.supportOffset?.y ?? 0);
         // Direct mounting uses two bands on the pole face; side mounting adds a schematic 9-inch bracket extension.
-        const extension = item.head.poleMounting === 'direct' ? 0 : 9;
+        const extension = item.head.poleMounting !== 'side' ? 0 : 9;
         const bracketSide = item.head.poleMountSide ?? (project.support.side === 'left' ? 'left' : 'right');
         const direction = (bracketSide === 'left' ? -1 : 1) * (project.support.side === 'left' ? -1 : 1);
         const bracketX = poleX - poleDiameter / 2 - (direction < 0 ? extension : 0);
-        return [-1, 1].map(side => `<g class="poleSignalMount ${item.head.poleMounting === 'direct' ? 'directPoleMount' : 'sidePoleMount'}"><rect x="${bracketX}" y="${centerY + side * item.geometry.height * 0.3 - 1}" width="${poleDiameter + extension}" height="2"/><rect x="${bracketX}" y="${centerY + side * item.geometry.height * 0.3}" width="${poleDiameter + extension}" height="1" fill="${tone(color, -0.3)}"/></g>`).join('');
+        return [-1, 1].map(side => `<g class="poleSignalMount ${item.head.poleMounting !== 'side' ? 'directPoleMount' : 'sidePoleMount'}"><rect x="${bracketX}" y="${centerY + side * item.geometry.height * 0.3 - 1}" width="${poleDiameter + extension}" height="2"/><rect x="${bracketX}" y="${centerY + side * item.geometry.height * 0.3}" width="${poleDiameter + extension}" height="1" fill="${tone(color, -0.3)}"/></g>`).join('');
       }).join('')}
     </g></g>${(mast.angle || mast.bowAngle) && project.support.mastHeadAlignment !== 'arm-center' ? layout.heads.filter(item => !item.head.poleMounted).map(item => {
       const x = item.x + item.geometry.width / 2 - (layout.supportOffset?.x ?? 0);
@@ -440,11 +500,11 @@
   function streetMountMarkup(project, layout) {
     const color = project.support?.color ?? '#a9a9a9';
     return (layout.streetSigns ?? []).map(item => {
-      if (item.mounting === 'mast') {
+      if (item.mounting === 'mast' || item.mounting === 'pedestal') {
         // Two schematic steel bands fasten the sign to the tapered pole face.
         const height = item.poleHeight;
-        const width = layout.mast.poleDiameter - app.dimensions.mast.taperPerFoot * (height - app.dimensions.mast.baseThickness) / 12 + 2;
-        return `<g class="streetSignMount" data-mount="mast-bands" fill="${color}">${[0.25, 0.75].map(fraction => {
+        const width = item.mounting === 'pedestal' ? 6.5 : layout.mast.poleDiameter - app.dimensions.mast.taperPerFoot * (height - app.dimensions.mast.baseThickness) / 12 + 2;
+        return `<g class="streetSignMount" data-mount="${item.mounting}-bands" fill="${color}">${[0.25, 0.75].map(fraction => {
           const y = item.y + item.geometry.height * fraction;
           return `<rect x="${item.poleX - width / 2}" y="${y - 1}" width="${width}" height="2" rx="0.2"/><rect x="${item.poleX - width / 2}" y="${y}" width="${width}" height="1" fill="${tone(color, -0.3)}"/>`;
         }).join('')}</g>`;
@@ -470,9 +530,9 @@
     if (layout.assemblies) return layout.assemblies.map(item =>
       `<g transform="translate(${item.x} ${item.y})">${supportMarkup(item.project, item.layout, interactive, item.index)}</g>`).join('');
     const offset = layout.supportOffset ?? { x: 0, y: 0 };
-    const target = interactive && layout.mast
+    const target = interactive && app.hasSupport(project)
       ? `data-select-mast-arm="${armIndex}" data-mast-arm-index="${armIndex}" role="button" tabindex="0" aria-label="Edit ${app.escape(project.mastArmName ?? `Mast Arm ${armIndex + 1}`)}"` : '';
-    return `<g transform="translate(${offset.x} ${offset.y})" ${target}>${interactive && layout.mast ? '<g class="mastArmVisual">' : ''}${rawSupportMarkup(project, layout)}${interactive && layout.mast ? '</g>' : ''}</g>${streetMountMarkup(project, layout)}`;
+    return `<g transform="translate(${offset.x} ${offset.y})" ${target}>${interactive && app.hasSupport(project) ? '<g class="mastArmVisual">' : ''}${rawSupportMarkup(project, layout)}${interactive && app.hasSupport(project) ? '</g>' : ''}</g>${streetMountMarkup(project, layout)}`;
   }
 
   function renderSVG(project) {
@@ -493,13 +553,13 @@
 
   function renderPreview(project) {
     const layout = scene(project);
-    const supported = app.hasSupport(project);
-    const support = supported ? `<svg class="${layout.mast ? 'mastSupport' : 'spanSupport'}" viewBox="0 0 ${layout.width} ${layout.height}" ${layout.mast ? 'role="group" aria-label="Mast arm supports"' : 'aria-hidden="true"'}>${supportMarkup(project, layout, true)}</svg>` : '';
-    return `<div id="headContainer" class="${layout.mast ? 'mastScene' : layout.span ? 'spanScene' : layout.streetSigns?.length ? 'signScene' : ''}" data-alignment="${app.normalizeAlignment(project.alignment)}">${support}${layout.heads.map(({ head, geometry, mastArmIndex }) =>
-      `<div class="previewHead" data-head-id="${head.id}" ${mastArmIndex == null ? '' : `data-mast-arm-index="${mastArmIndex}"`} role="button" tabindex="0" draggable="true" ${supported && head.poleMounted ? 'aria-keyshortcuts="ArrowUp ArrowDown" title="Drag vertically on the pole; up/down arrow keys also move this head"' : supported ? 'aria-keyshortcuts="ArrowLeft ArrowRight" title="Drag along the support; left/right arrow keys also move this head"' : ''} aria-label="Edit ${app.escape(app.displayName(head))}" aria-pressed="${head.id === project.selectedId}">
+    const supported = Boolean(layout.assemblies) || app.hasSupport(project);
+    const support = supported ? `<svg class="${layout.mast ? 'mastSupport' : 'spanSupport'}" viewBox="0 0 ${layout.width} ${layout.height}" role="group" aria-label="Supports">${supportMarkup(project, layout, true)}</svg>` : '';
+    return `<div id="headContainer" class="${layout.assemblies || layout.mast || layout.pedestal ? 'mastScene' : layout.span ? 'spanScene' : layout.streetSigns?.length ? 'signScene' : ''}" data-alignment="${app.normalizeAlignment(project.alignment)}">${support}${layout.heads.map(({ head, geometry, mastArmIndex, assemblySupport = project.support }) =>
+      `<div class="previewHead" data-head-id="${head.id}" ${mastArmIndex == null ? '' : `data-mast-arm-index="${mastArmIndex}"`} role="button" tabindex="0" draggable="true" ${assemblySupport.type !== 'none' && (head.poleMounted || assemblySupport.type === 'pedestal') ? 'aria-keyshortcuts="ArrowUp ArrowDown" title="Drag vertically on the pole; up/down arrow keys also move this head"' : assemblySupport.type !== 'none' ? 'aria-keyshortcuts="ArrowLeft ArrowRight" title="Drag along the support; left/right arrow keys also move this head"' : ''} aria-label="Edit ${app.escape(app.displayName(head))}" aria-pressed="${head.id === project.selectedId}">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${geometry.width} ${geometry.height}" aria-hidden="true">${headMarkup(head, geometry)}</svg>
-      </div>`).join('')}${(layout.streetSigns ?? []).map(({ sign, geometry, mastArmIndex, mounting }) =>
-      `<div class="previewStreetSign${app.isRegulatorySign(sign) ? ' regulatorySign' : ''}${app.signCanMove(sign, project.support) ? ' movableSign' : ''}" data-street-sign-id="${sign.id}" ${mastArmIndex == null ? '' : `data-mast-arm-index="${mastArmIndex}"`} role="button" tabindex="0" aria-label="Edit ${app.escape(sign.name)}${geometry.regulatory ? app.escape(' — ' + geometry.regulatory.name) : ''}" aria-pressed="${sign.id === project.selectedStreetSignId}" ${app.signCanMove(sign, project.support) ? mounting === 'mast' ? 'data-drag-axis="vertical" aria-keyshortcuts="ArrowUp ArrowDown" title="Drag vertically on the mast; up/down arrow keys also move this sign"' : 'aria-keyshortcuts="ArrowLeft ArrowRight" title="Drag along the support; left/right arrow keys also move this sign"' : ''}><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${geometry.width} ${geometry.height}" aria-hidden="true">${app.streetSignMarkup(sign, geometry)}</svg></div>`).join('')}</div>`;
+      </div>`).join('')}${(layout.streetSigns ?? []).map(({ sign, geometry, mastArmIndex, mounting, assemblySupport = project.support }) =>
+      `<div class="previewStreetSign${app.isRegulatorySign(sign) ? ' regulatorySign' : ''}${app.signCanMove(sign, assemblySupport) ? ' movableSign' : ''}" data-street-sign-id="${sign.id}" ${mastArmIndex == null ? '' : `data-mast-arm-index="${mastArmIndex}"`} role="button" tabindex="0" aria-label="Edit ${app.escape(sign.name)}${geometry.regulatory ? app.escape(' — ' + geometry.regulatory.name) : ''}" aria-pressed="${sign.id === project.selectedStreetSignId}" ${app.signCanMove(sign, assemblySupport) ? (mounting === 'mast' || mounting === 'pedestal') ? 'data-drag-axis="vertical" aria-keyshortcuts="ArrowUp ArrowDown" title="Drag vertically on the pole; up/down arrow keys also move this sign"' : 'aria-keyshortcuts="ArrowLeft ArrowRight" title="Drag along the support; left/right arrow keys also move this sign"' : ''}><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${geometry.width} ${geometry.height}" aria-hidden="true">${app.streetSignMarkup(sign, geometry)}</svg></div>`).join('')}</div>`;
   }
 
   // Use the same signal artwork for the white symbol-picker previews.
@@ -507,5 +567,5 @@
     return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-7 -7 14 14" aria-hidden="true" focusable="false">${symbol({ symbol: value, size: 12, color: 'white' }, 0, 0)}</svg>`;
   }
 
-  Object.assign(app, { scene, renderSVG, renderPreview, renderSymbolIcon });
+  Object.assign(app, { supportAnchor, scene, renderSVG, renderPreview, renderSymbolIcon });
 })();
